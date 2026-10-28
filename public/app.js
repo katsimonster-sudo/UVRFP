@@ -1411,9 +1411,15 @@ document.getElementById('pdfFileInput').addEventListener('change', async (e) => 
     const result = await res.json();
     if (result.success && result.suite) {
       if (result.suite.forms) {
+        // 1. Рік / наростаючий підсумок отримує кумулятивні форми
         Object.keys(result.suite.forms).forEach(fk => {
-          liveData[activeQuarter][fk] = Object.assign({}, liveData[activeQuarter][fk], result.suite.forms[fk]);
           liveData.year[fk] = Object.assign({}, liveData.year[fk], result.suite.forms[fk]);
+        });
+
+        // 2. Звітний квартал отримує чисті ізольовані дельти (за мінусом попередніх кварталів!)
+        const qForms = result.suite.deltaForms || result.suite.forms;
+        Object.keys(qForms).forEach(fk => {
+          liveData[activeQuarter][fk] = Object.assign({}, liveData[activeQuarter][fk], qForms[fk]);
         });
       }
       updateApp3FromLiveData();

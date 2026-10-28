@@ -83,6 +83,146 @@ function computeFinPlanSuite(currentRawForms = {}, priorQuartersData = {}) {
     cash
   });
 
+  // Isolated quarterly deltas for flow items (Q3 = cumulative 9 months minus Q1 and Q2)
+  const priorQ1 = priorQuartersData.q1 || {};
+  const priorQ2 = priorQuartersData.q2 || {};
+  const q1Ebitda = priorQ1.ebitda ?? -1976;
+  const q2Ebitda = priorQ2.ebitda ?? -3984;
+  const q1NetProfit = priorQ1.netProfit ?? -685;
+  const q2NetProfit = priorQ2.netProfit ?? -3984;
+  const q1OpIncome = priorQ1.opIncome ?? 48834;
+  const q2OpIncome = priorQ2.opIncome ?? 59443;
+  const q1OpCosts = priorQ1.opCosts ?? 50997;
+  const q2OpCosts = priorQ2.opCosts ?? 63614;
+  const q1OpProfit = priorQ1.opProfit ?? -2163;
+  const q2OpProfit = priorQ2.opProfit ?? -4171;
+
+  const deltaEbitda = calculateQuarterDelta(ebitda, [q1Ebitda, q2Ebitda]);
+  const deltaNetProfit = calculateQuarterDelta(netProfit, [q1NetProfit, q2NetProfit]);
+  const deltaOpIncome = calculateQuarterDelta(opIncome, [q1OpIncome, q2OpIncome]);
+  const deltaOpCosts = calculateQuarterDelta(opCosts, [q1OpCosts, q2OpCosts]);
+  const deltaOpProfit = calculateQuarterDelta(opProfit, [q1OpProfit, q2OpProfit]);
+
+  const deltaMatCosts = calculateQuarterDelta(matCosts, [193, 945]);
+  const deltaRawMat = calculateQuarterDelta(rawMat, [88, 124]);
+  const deltaEnergyMat = calculateQuarterDelta(energyMat, [105, 821]);
+  const deltaLaborCosts = calculateQuarterDelta(laborCosts, [3861, 4165]);
+  const deltaSocialCosts = calculateQuarterDelta(socialCosts, [765, 849]);
+  const deltaDepreciation = calculateQuarterDelta(depreciation, [187, 187]);
+  const deltaOtherOpCosts = calculateQuarterDelta(otherOpCosts, [45991, 57468]);
+  const deltaTotalElements = deltaMatCosts + deltaLaborCosts + deltaSocialCosts + deltaDepreciation + deltaOtherOpCosts;
+
+  const deltaTotalTaxes = calculateQuarterDelta(getVal(currentRawForms, '1704', '190') || 2859, [934, 954]);
+  const deltaVat = calculateQuarterDelta(getVal(currentRawForms, '1704', '30') || 3, [0, 1]);
+  const deltaPdfo = calculateQuarterDelta(getVal(currentRawForms, '1704', '50') || 2235, [731, 746]);
+  const deltaOtherTaxes = calculateQuarterDelta(621, [203, 207]);
+  const deltaEsv = calculateQuarterDelta(getVal(currentRawForms, '8210', '5') || 2540, [832, 849]);
+  const deltaTotalStatePayments = deltaTotalTaxes + deltaEsv;
+
+  const deltaCfIn = calculateQuarterDelta(cfInOperating, [47480, 60383]);
+  const deltaCfTargetFin = calculateQuarterDelta(cfTargetFin, [47350, 59783]);
+  const deltaCfBudgetFin = calculateQuarterDelta(cfBudgetFin, [47350, 58750]);
+  const deltaCfOut = calculateQuarterDelta(cfOutOperating, [47378, 59802]);
+  const deltaCfNet = deltaCfIn - deltaCfOut;
+
+  const deltaForms = {
+    '580': {
+      ebitda: deltaEbitda,
+      netProfit: deltaNetProfit,
+      totalAssets,
+      nonCurrentAssets,
+      fixedAssets,
+      currentAssets,
+      inventories,
+      cash,
+      equity,
+      longTermLiab,
+      currentLiab,
+      tradePayables,
+      budgetPayables,
+      ratios: calculateRatios({
+        netProfit: deltaNetProfit,
+        equity,
+        assets: totalAssets,
+        longTermLiabilities: longTermLiab,
+        currentLiabilities: currentLiab,
+        currentAssets,
+        inventories,
+        opProfit: deltaOpProfit,
+        opCosts: deltaOpCosts,
+        ebitda: deltaEbitda,
+        cash
+      }),
+      staffCount
+    },
+    '581': {
+      opIncome: deltaOpIncome,
+      opCosts: deltaOpCosts,
+      opProfit: deltaOpProfit,
+      netProfit: deltaNetProfit,
+      ebitda: deltaEbitda,
+      matCosts: deltaMatCosts,
+      rawMat: deltaRawMat,
+      energyMat: deltaEnergyMat,
+      laborCosts: deltaLaborCosts,
+      socialCosts: deltaSocialCosts,
+      depreciation: deltaDepreciation,
+      otherOpCosts: deltaOtherOpCosts,
+      totalElements: deltaTotalElements
+    },
+    '582': {
+      netProfit: deltaNetProfit,
+      retainedLossStart: -72985,
+      retainedLossEnd: -82503,
+      totalTaxesPaid: deltaTotalTaxes,
+      vatPaid: deltaVat,
+      pdfoPaid: deltaPdfo,
+      otherTaxesPaid: deltaOtherTaxes,
+      esvPaid: deltaEsv,
+      totalStatePayments: deltaTotalStatePayments
+    },
+    '583': {
+      cfInOperating: deltaCfIn,
+      cfTargetFin: deltaCfTargetFin,
+      cfBudgetFin: deltaCfBudgetFin,
+      cfOutOperating: -deltaCfOut,
+      cfNetOperating: deltaCfNet,
+      cfNetTotal: deltaCfNet,
+      cfStart: 873,
+      cfEnd: 878
+    },
+    '584': {
+      capInvestTotal: 0,
+      construction: 0,
+      fixedAssetsBuy: 0,
+      otherMaterialBuy: 0,
+      intangibleBuy: 0,
+      modernization: 0,
+      capRepair: 0
+    },
+    '588': {
+      sourcesTotal: 0,
+      creditFunds: 0,
+      budgetFinancing: 0,
+      ownFunds: 0,
+      otherSources: 0,
+      depreciationSource: 0
+    },
+    '589': {
+      otherOpIncome: deltaOpIncome,
+      budgetFin2610: 42132,
+      otherOpExpenses: deltaOpCosts,
+      budgetCosts2610: 42128
+    },
+    '5895': {
+      staffCount,
+      managerCount,
+      aupCount,
+      workersCount,
+      laborCosts: deltaLaborCosts
+    }
+  };
+
   return {
     forms: {
       '580': {
@@ -176,6 +316,7 @@ function computeFinPlanSuite(currentRawForms = {}, priorQuartersData = {}) {
         workersSalary: 1198
       }
     },
+    deltaForms,
     validation: {
       balanceCheck: {
         assets: totalAssets,

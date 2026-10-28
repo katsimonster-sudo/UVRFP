@@ -36,14 +36,15 @@ app.get('/api/period/:year/:quarter', (req, res) => {
   }
 
   // Fetch prior quarters for delta calculation
+  const qNum = Number(quarter);
   const priorData = {
-    q1: getPeriodData(year, 1),
-    q2: getPeriodData(year, 2),
-    q3: getPeriodData(year, 3)
+    q1: qNum >= 2 ? getPeriodData(year, 1) : null,
+    q2: qNum >= 3 ? getPeriodData(year, 2) : null,
+    q3: qNum >= 4 ? getPeriodData(year, 3) : null
   };
 
   const suite = computeFinPlanSuite(rawData, priorData);
-  res.json({ year: Number(year), quarter: Number(quarter), suite });
+  res.json({ year: Number(year), quarter: qNum, suite });
 });
 
 // 3. Upload PDF and parse
@@ -62,11 +63,11 @@ app.post('/api/upload-pdf', upload.single('pdfFile'), async (req, res) => {
     // Save parsed data to store
     savePeriodData(year, quarter, parsed.forms);
 
-    // Get prior quarters
+    // Get prior quarters (exclude current quarter to avoid double-counting in delta)
     const priorData = {
-      q1: getPeriodData(year, 1),
-      q2: getPeriodData(year, 2),
-      q3: getPeriodData(year, 3)
+      q1: quarter >= 2 ? getPeriodData(year, 1) : null,
+      q2: quarter >= 3 ? getPeriodData(year, 2) : null,
+      q3: quarter >= 4 ? getPeriodData(year, 3) : null
     };
 
     const suite = computeFinPlanSuite(parsed.forms, priorData);

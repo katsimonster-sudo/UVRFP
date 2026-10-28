@@ -1439,5 +1439,62 @@ document.getElementById('yearSelect').addEventListener('change', (e) => {
 // Preload App 3 data
 fetchApp3Template();
 
+// =====================================================
+//  AUTO-LOAD STORED PERIOD DATA ON STARTUP
+// =====================================================
+async function autoLoadStoredPeriod() {
+  try {
+    const res = await fetch('/api/periods');
+    const { periods } = await res.json();
+    if (!periods || periods.length === 0) return;
+
+    // Find most recent period matching currentYear, prefer highest quarter
+    const yearPeriods = periods.filter(p => p.year === currentYear);
+    if (yearPeriods.length === 0) return;
+    const latest = yearPeriods.sort((a, b) => b.quarter - a.quarter)[0];
+    if (!latest) return;
+
+    const qKey = `q${latest.quarter}`;
+    const dataRes = await fetch(`/api/period/${latest.year}/${latest.quarter}`);
+    const data = await dataRes.json();
+    if (!data.suite) return;
+
+    // 1. Cumulative (9-month) → liveData.year
+    if (data.suite.forms) {
+      Object.keys(data.suite.forms).forEach(fk => {
+        liveData.year[fk] = Object.assign({}, liveData.year[fk], data.suite.forms[fk]);
+      });
+    }
+
+    // 2. Isolated quarterly delta → liveData[quarter]
+    const deltaF = data.suite.deltaForms || data.suite.forms;
+    if (deltaF) {
+      Object.keys(deltaF).forEach(fk => {
+        liveData[qKey][fk] = Object.assign({}, liveData[qKey][fk], deltaF[fk]);
+      });
+    }
+
+    // 3. Activate matching quarter button
+    activeQuarter = qKey;
+    document.querySelectorAll('.qtr-header-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-qtr') === activeQuarter);
+    });
+
+    // 4. Re-update App3 and render
+    updateApp3FromLiveData();
+    renderActiveTab();
+
+    const statusEl = document.getElementById('footerStatusText');
+    if (statusEl) {
+      statusEl.textContent = `✅ Дані ${latest.year} Q${latest.quarter} завантажено автоматично.`;
+    }
+  } catch (err) {
+    console.warn('Auto-load stored period failed:', err.message);
+  }
+}
+
 // Init
 renderActiveTab();
+
+// Auto-load after slight delay to allow template fetch to complete
+setTimeout(autoLoadStoredPeriod, 800);

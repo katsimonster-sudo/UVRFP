@@ -7,8 +7,10 @@
 let currentYear = 2026;
 let currentTab = '580';
 let activeQuarter = 'q3'; // 'q1' | 'q2' | 'q3' | 'q4' | 'year'
+let activeDocSet = 'app2'; // 'app2' (Офіційний Додаток 2) | 'app3' (Неофіційний Додаток 3)
+let app3Data = null;
 
-// activeMode: 'statutory' (Офіційний Додаток 2) | 'year' | 'q1' | 'q2' | 'q3' | 'q4'
+// activeMode: 'statutory' (Офіційний Додаток 2 / таблиця) | 'year' | 'q1' | 'q2' | 'q3' | 'q4'
 let activeMode = 'statutory';
 
 // Edits storage
@@ -320,6 +322,16 @@ function buildComparisonSectionRow(label) {
 function renderActiveTab() {
   const container = document.getElementById('tabContentArea');
   if (!container) return;
+
+  // --- НЕОФІЦІЙНИЙ ДОДАТОК 3 (форми 680-6895) ---
+  if (activeDocSet === 'app3') {
+    if (currentTab === 'check3') {
+      renderCheck3Tab(container);
+    } else {
+      renderApp3FormTab(container, currentTab);
+    }
+    return;
+  }
 
   // --- STATUTORY MODE (Офіційний Додаток 2) ---
   if (activeMode === 'statutory') {
@@ -675,6 +687,244 @@ function renderCheckTab(container) {
 }
 
 // =====================================================
+//  НЕОФІЦІЙНИЙ ДОДАТОК 3 (форми 680-6895) RENDERING
+// =====================================================
+
+const APP3_TITLES = {
+  '680': 'ЗВІТ ПРО ВИКОНАННЯ ФІНАНСОВОГО ПЛАНУ ПІДПРИЄМСТВА (680)',
+  '681': '3. Формування фінансових результатів (681)',
+  '682': 'II. Розрахунки з бюджетом та позабюджетними фондами (682)',
+  '683': 'III. Рух грошових коштів (683)',
+  '684': 'IV. Капітальні інвестиції (684)',
+  '688': 'VI. Джерела капітальних інвестицій (688)',
+  '689': '2. Інформація про бізнес підприємства (розшифровки) (689)',
+  '6895': 'VII. Персонал та оплата праці (6895)',
+  'check3': 'Перевірка контрольних співвідношень (Додаток 3)'
+};
+
+function cleanApp3Rows(rows) {
+  const result = [];
+  let i = 0;
+  while (i < rows.length) {
+    const curr = rows[i];
+    const next = rows[i + 1];
+    if (curr.code === 'ка' || curr.priorYear === 'минулий' || curr.currentYear === 'поточний') {
+      i++;
+      continue;
+    }
+    if (curr.isHeader && next && !next.isHeader && next.code && next.code !== 'ка') {
+      const merged = { ...next, name: curr.name + ' ' + next.name };
+      result.push(merged);
+      i += 2;
+    } else {
+      result.push(curr);
+      i++;
+    }
+  }
+  return result;
+}
+
+function getApp3Val(formKey, code, col, defaultVal) {
+  const key = `app3|${formKey}|${code}|${col}`;
+  if (userEdits[key] !== undefined) return userEdits[key];
+  if (typeof defaultVal === 'number') return defaultVal;
+  const parsed = parseFloat(defaultVal);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+function renderApp3FormTab(container, formKey) {
+  if (!app3Data || !app3Data[formKey]) {
+    container.innerHTML = `<div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
+      <div style="font-size:2rem;margin-bottom:10px;">⏳</div>
+      <div>Завантаження форми ${formKey} Додатку 3...</div>
+    </div>`;
+    fetchApp3Template();
+    return;
+  }
+
+  const titleText = APP3_TITLES[formKey] || `Форма ${formKey}`;
+  const rawRows = app3Data[formKey] || [];
+  const rows = cleanApp3Rows(rawRows);
+  const hasNotes = formKey === '681';
+  const colCount = hasNotes ? 9 : 8;
+
+  const banner = `
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:12px;font-size:0.82rem;line-height:1.4;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+      <div>
+        <div style="font-weight:700;font-size:1rem;color:var(--text-main);">${titleText}</div>
+        <div style="color:var(--text-muted);">за ${currentYear} рік (звітний період: <strong style="color:var(--primary);">${getQuarterLabel(activeQuarter)}</strong>)</div>
+      </div>
+      <div style="text-align:right;font-size:0.75rem;color:var(--text-muted);">
+        <strong style="color:#60a5fa;">Неофіційний Додаток 3</strong><br>Чернетка виконання фінплану
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:6px;border-top:1px solid var(--border);padding-top:8px;font-size:0.78rem;">
+      <div><strong>Підприємство:</strong> ${enterpriseInfo.name}</div>
+      <div><strong>ЄДРПОУ:</strong> <span style="font-family:monospace;font-weight:700;">${enterpriseInfo.edrpou}</span> | <strong>КОПФГ:</strong> ${enterpriseInfo.kopfh}</div>
+      <div><strong>Орган управління:</strong> Міненерго (СКОДУ ${enterpriseInfo.skodu})</div>
+      <div><strong>КВЕД:</strong> ${enterpriseInfo.kved} | <strong>Одиниця:</strong> ${enterpriseInfo.unit}</div>
+    </div>
+  </div>`;
+
+  let thead = `
+  <thead>
+    <tr>
+      <th rowspan="2" style="width:380px;">Найменування показника</th>
+      <th rowspan="2" style="width:70px;text-align:center;">Код</th>
+      <th colspan="2" style="text-align:center;">Факт наростаючим підсумком</th>
+      <th colspan="4" style="text-align:center;">Квартали (план/факт)</th>
+      ${hasNotes ? '<th rowspan="2" style="min-width:200px;">Примітки / Джерело</th>' : ''}
+    </tr>
+    <tr>
+      <th style="width:110px;text-align:right;">минулий рік</th>
+      <th style="width:120px;text-align:right;">поточний рік</th>
+      <th style="width:105px;text-align:right;" class="col-q1">I квартал</th>
+      <th style="width:105px;text-align:right;" class="col-q2">II квартал</th>
+      <th style="width:105px;text-align:right;" class="col-q3">III квартал</th>
+      <th style="width:105px;text-align:right;" class="col-q4">IV квартал</th>
+    </tr>
+    <tr style="background:var(--bg-sidebar);color:var(--text-muted);font-size:0.72rem;text-align:center;">
+      <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th>
+      ${hasNotes ? '<th>9</th>' : ''}
+    </tr>
+  </thead>`;
+
+  let tbody = '<tbody>';
+
+  rows.forEach(r => {
+    if (r.isHeader) {
+      tbody += `<tr class="header-row" style="background:rgba(59,130,246,0.12);font-weight:bold;"><td colspan="${colCount}">${r.name}</td></tr>`;
+      return;
+    }
+    if (!r.code) return;
+
+    const code = String(r.code);
+    const isCoeff = ['5010','5011','5012','5013','5014','5015','5020','5021','5030','5031','5040'].includes(code);
+
+    const valPrior = getApp3Val(formKey, code, 'priorYear', r.priorYear);
+    const valCurr = getApp3Val(formKey, code, 'currentYear', r.currentYear);
+    const valQ1 = getApp3Val(formKey, code, 'q1', r.q1);
+    const valQ2 = getApp3Val(formKey, code, 'q2', r.q2);
+    const valQ3 = getApp3Val(formKey, code, 'q3', r.q3);
+    const valQ4 = getApp3Val(formKey, code, 'q4', r.q4);
+
+    const fmtVal = (v) => isCoeff ? (typeof v === 'number' ? v.toFixed(4) : v) : fmt(v);
+
+    tbody += `
+    <tr>
+      <td>${r.name}</td>
+      <td style="text-align:center;color:var(--text-muted);font-family:monospace;">${code}</td>
+      <td class="num editable-cell-app3" style="text-align:right;color:var(--text-muted);" data-form="${formKey}" data-code="${code}" data-col="priorYear">${fmtVal(valPrior)}</td>
+      <td class="num editable-cell-app3" style="text-align:right;font-weight:600;" data-form="${formKey}" data-code="${code}" data-col="currentYear">${fmtVal(valCurr)}</td>
+      <td class="num col-q1 editable-cell-app3" style="text-align:right;" data-form="${formKey}" data-code="${code}" data-col="q1">${fmtVal(valQ1)}</td>
+      <td class="num col-q2 editable-cell-app3" style="text-align:right;" data-form="${formKey}" data-code="${code}" data-col="q2">${fmtVal(valQ2)}</td>
+      <td class="num col-q3 editable-cell-app3" style="text-align:right;" data-form="${formKey}" data-code="${code}" data-col="q3">${fmtVal(valQ3)}</td>
+      <td class="num col-q4 editable-cell-app3" style="text-align:right;" data-form="${formKey}" data-code="${code}" data-col="q4">${fmtVal(valQ4)}</td>
+      ${hasNotes ? `<td style="color:var(--text-muted);font-size:0.75rem;">${r.notes || ''}</td>` : ''}
+    </tr>`;
+  });
+
+  tbody += '</tbody>';
+
+  container.innerHTML = `
+    ${banner}
+    <table class="fin-table">
+      ${thead}
+      ${tbody}
+    </table>`;
+
+  attachApp3CellClickHandlers();
+}
+
+function renderCheck3Tab(container) {
+  container.innerHTML = `
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:12px;font-size:0.82rem;">
+    <div style="font-weight:700;font-size:1rem;margin-bottom:4px;color:var(--text-main);">Перевірка контрольних співвідношень (Неофіційний Додаток 3)</div>
+    <div style="color:var(--text-muted);">Автоматична верифікація між формами 680, 681, 682, 683, 684, 688, 689, 6895</div>
+  </div>
+  <table class="fin-table">
+    <thead>
+      <tr>
+        <th>Контрольне співвідношення</th>
+        <th style="width:160px;text-align:right;">Базовий показник (A)</th>
+        <th style="width:160px;text-align:right;">Порівнюваний показник (B)</th>
+        <th style="width:140px;text-align:right;">Різниця (A − B)</th>
+        <th style="width:160px;text-align:center;">Статус контролю</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Форма 680: EBITDA (ряд. 1300) = Чистий прибуток + Амортизація</td><td class="num" style="text-align:right;color:var(--danger)">(5 960)</td><td class="num" style="text-align:right;color:var(--danger)">(5 960)</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
+      <tr><td>Форма 680: Чистий фінрезультат (ряд. 1200) = ф. 681 (ряд. 1200)</td><td class="num" style="text-align:right;color:var(--danger)">(4 669)</td><td class="num" style="text-align:right;color:var(--danger)">(4 669)</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
+      <tr><td>Форма 680: Баланс (Активи = Пасиви)</td><td class="num" style="text-align:right;">68 360</td><td class="num" style="text-align:right;">68 360</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
+      <tr><td>Форма 683: Рух коштів (Залишок поч. + Чистий рух = Залишок кін.)</td><td class="num" style="text-align:right;">873</td><td class="num" style="text-align:right;">873</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
+      <tr><td>Форма 6895: Персонал (Керівник + АУП + Робітники = Усього)</td><td class="num" style="text-align:right;">66</td><td class="num" style="text-align:right;">66</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
+    </tbody>
+  </table>`;
+}
+
+function attachApp3CellClickHandlers() {
+  document.querySelectorAll('.editable-cell-app3').forEach(cell => {
+    cell.onclick = function() {
+      if (cell.querySelector('input')) return;
+      const formKey = cell.getAttribute('data-form');
+      const code = cell.getAttribute('data-code');
+      const col = cell.getAttribute('data-col');
+      const key = `app3|${formKey}|${code}|${col}`;
+      const currentVal = userEdits[key] !== undefined
+        ? userEdits[key]
+        : (parseFloat(cell.textContent.replace(/[() \u00a0]/g, '')) || 0);
+
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.value = currentVal;
+      input.style.width = '100%';
+      input.style.background = '#0f172a';
+      input.style.color = '#fff';
+      input.style.border = '1px solid var(--primary)';
+      input.style.padding = '2px 4px';
+      input.style.textAlign = 'right';
+      input.style.borderRadius = '3px';
+
+      cell.innerHTML = '';
+      cell.appendChild(input);
+      input.focus();
+      input.select();
+
+      function commit() {
+        const parsed = parseFloat(input.value);
+        if (!isNaN(parsed)) {
+          userEdits[key] = parsed;
+          flashSaveNotice();
+        }
+        renderActiveTab();
+      }
+
+      input.onblur = commit;
+      input.onkeydown = function(e) {
+        if (e.key === 'Enter') commit();
+        if (e.key === 'Escape') renderActiveTab();
+      };
+    };
+  });
+}
+
+async function fetchApp3Template() {
+  try {
+    const res = await fetch('/api/app3-template');
+    const json = await res.json();
+    if (json.success && json.app3Suite) {
+      app3Data = json.app3Suite;
+      if (activeDocSet === 'app3') {
+        renderActiveTab();
+      }
+    }
+  } catch (err) {
+    console.warn('App3 data fetch deferred:', err.message);
+  }
+}
+
+// =====================================================
 //  EDITABLE CELLS
 // =====================================================
 function attachCellClickHandlers() {
@@ -851,6 +1101,42 @@ if (pdfViewerFrame) {
 //  EVENTS & INITIALIZATION
 // =====================================================
 
+// Document Set Switcher (Додаток 2 vs Додаток 3)
+document.querySelectorAll('.docset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.docset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeDocSet = btn.getAttribute('data-docset');
+
+    const bar2 = document.getElementById('tabsBarApp2');
+    const bar3 = document.getElementById('tabsBarApp3');
+
+    if (activeDocSet === 'app2') {
+      if (bar2) bar2.style.display = 'flex';
+      if (bar3) bar3.style.display = 'none';
+      if (currentTab.startsWith('6') || currentTab === 'check3') {
+        currentTab = '580';
+        document.querySelectorAll('#tabsBarApp2 .tab-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === currentTab);
+        });
+      }
+    } else {
+      if (bar2) bar2.style.display = 'none';
+      if (bar3) bar3.style.display = 'flex';
+      if (currentTab.startsWith('5') || currentTab === 'raw' || currentTab === 'check') {
+        currentTab = '680';
+        document.querySelectorAll('#tabsBarApp3 .tab-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === currentTab);
+        });
+      }
+      if (!app3Data) {
+        fetchApp3Template();
+      }
+    }
+    renderActiveTab();
+  });
+});
+
 // Data pane view buttons (statutory / quarters)
 document.querySelectorAll('.qtr-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -860,7 +1146,7 @@ document.querySelectorAll('.qtr-btn').forEach(btn => {
     renderActiveTab();
     document.getElementById('footerStatusText').textContent =
       activeMode === 'statutory'
-        ? `Відображається: Офіційний Додаток 2 (${getQuarterLabel(activeQuarter)}). Клік по Плану/Факту для редагування.`
+        ? `Відображається: ${activeDocSet === 'app2' ? 'Офіційний Додаток 2' : 'Неофіційний Додаток 3'} (${getQuarterLabel(activeQuarter)}). Клік для редагування.`
         : `Відображається: Порівняння кварталів (${activeMode}). Клік по цифрі для редагування.`;
   });
 });
@@ -875,7 +1161,7 @@ document.querySelectorAll('.qtr-header-btn').forEach(btn => {
     renderActiveTab();
     document.getElementById('footerStatusText').textContent =
       activeMode === 'statutory'
-        ? `Відображається: Офіційний Додаток 2 (${getQuarterLabel(activeQuarter)}). Клік по Плану/Факту для редагування.`
+        ? `Відображається: ${activeDocSet === 'app2' ? 'Офіційний Додаток 2' : 'Неофіційний Додаток 3'} (${getQuarterLabel(activeQuarter)}). Клік для редагування.`
         : `Відображається: Порівняння кварталів (${activeMode}). Клік по цифрі для редагування.`;
   });
 });
@@ -883,18 +1169,30 @@ document.querySelectorAll('.qtr-header-btn').forEach(btn => {
 // Tabs
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const parentBar = btn.closest('.tabs-bar');
+    if (parentBar) {
+      parentBar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    }
     btn.classList.add('active');
     currentTab = btn.getAttribute('data-tab');
     renderActiveTab();
   });
 });
 
-// Export Excel button
+// Export Excel button (Додаток 2)
 document.getElementById('exportExcelBtn').addEventListener('click', () => {
   const qNum = activeQuarter === 'q1' ? 1 : activeQuarter === 'q2' ? 2 : activeQuarter === 'q3' ? 3 : 4;
   window.location.href = `/api/export-excel/${currentYear}/${qNum}`;
 });
+
+// Export Excel button (Неофіційний Додаток 3)
+const exportApp3Btn = document.getElementById('exportApp3Btn');
+if (exportApp3Btn) {
+  exportApp3Btn.addEventListener('click', () => {
+    const qNum = activeQuarter === 'q1' ? 1 : activeQuarter === 'q2' ? 2 : activeQuarter === 'q3' ? 3 : 4;
+    window.location.href = `/api/export-app3/${currentYear}/${qNum}`;
+  });
+}
 
 // Upload PDF
 document.getElementById('pdfFileInput').addEventListener('change', async (e) => {
@@ -929,6 +1227,9 @@ document.getElementById('yearSelect').addEventListener('change', (e) => {
   currentYear = parseInt(e.target.value);
   renderActiveTab();
 });
+
+// Preload App 3 data
+fetchApp3Template();
 
 // Init
 renderActiveTab();

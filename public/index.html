@@ -6,6 +6,36 @@
   <title>FP-2025 Studio — Автоматизація виконання фінансового плану</title>
   <link rel="stylesheet" href="styles.css">
   <style>
+    /* ---- Document set switcher ---- */
+    .docset-bar {
+      display: flex;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #111827;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .docset-btn {
+      background: var(--bg-hover);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .docset-btn:hover { background: rgba(59, 130, 246, 0.2); color: #fff; }
+    .docset-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
     /* ---- Quarter selector in header ---- */
     .qtr-header-bar {
       display: flex;
@@ -131,7 +161,8 @@
       <button class="btn btn-secondary" onclick="document.getElementById('pdfFileInput').click()">
         📁 Завантажити скан PDF
       </button>
-      <button id="exportExcelBtn" class="btn btn-success">📥 Експорт в Excel (.xlsx)</button>
+      <button id="exportExcelBtn" class="btn btn-success" title="Затверджений офіційний шаблон (Додаток 2, форми 580-5895)">📥 Експорт Дод. 2 (.xlsx)</button>
+      <button id="exportApp3Btn" class="btn" style="background:#2563eb;color:#fff;" title="Неофіційний робочий шаблон (Додаток 3, форми 680-6895)">📥 Експорт Дод. 3 (.xlsx)</button>
     </div>
   </header>
 
@@ -174,20 +205,26 @@
     <!-- RIGHT: Data pane -->
     <section class="data-pane">
 
+      <!-- Document Set switcher bar -->
+      <div class="docset-bar">
+        <button class="docset-btn active" id="btnDocSetApp2" data-docset="app2">🏛️ Офіційний Додаток 2 (форми 580–5895)</button>
+        <button class="docset-btn" id="btnDocSetApp3" data-docset="app3">📑 Неофіційний Додаток 3 (форми 680–6895)</button>
+      </div>
+
       <!-- Quarter filter bar -->
       <div class="qtr-bar">
         <label>📋 Вигляд:</label>
-        <button class="qtr-btn active" data-qtr="statutory">Офіційний Додаток 2 (8 граф)</button>
+        <button class="qtr-btn active" data-qtr="statutory">Таблиця форми (звітний період)</button>
         <button class="qtr-btn" data-qtr="year">Рік (всі кв.)</button>
         <button class="qtr-btn" data-qtr="q1">I кв. + Рік</button>
         <button class="qtr-btn" data-qtr="q2">I+II кв. + Рік</button>
         <button class="qtr-btn" data-qtr="q3">I+II+III кв. + Рік</button>
         <button class="qtr-btn" data-qtr="q4">Всі кв. + Рік</button>
-        <span class="qtr-hint">✏️ Клік по цифрі — редагування Плану/Факту</span>
+        <span class="qtr-hint">✏️ Клік по цифрі — редагування</span>
       </div>
 
-      <!-- Form tabs matching Додаток 2 -->
-      <nav class="tabs-bar">
+      <!-- Form tabs for Додаток 2 -->
+      <nav class="tabs-bar" id="tabsBarApp2">
         <button class="tab-btn active" data-tab="580" title="Звіт про виконання фінансового плану (Основні показники)">Звіт (580)</button>
         <button class="tab-btn" data-tab="581" title="3. Формування фінансових результатів">3. Фінрезультати (581)</button>
         <button class="tab-btn" data-tab="582" title="II. Розрахунки з бюджетом">II. Бюджет (582)</button>
@@ -198,6 +235,19 @@
         <button class="tab-btn" data-tab="5895" title="VII. Персонал та оплата праці">VII. Персонал (5895)</button>
         <button class="tab-btn" data-tab="raw">Дані_ПДФ</button>
         <button class="tab-btn" data-tab="check">Перевірка</button>
+      </nav>
+
+      <!-- Form tabs for Неофіційний Додаток 3 -->
+      <nav class="tabs-bar" id="tabsBarApp3" style="display:none;">
+        <button class="tab-btn active" data-tab="680" title="Звіт про виконання фінансового плану">Звіт (680)</button>
+        <button class="tab-btn" data-tab="681" title="3. Формування фінансових результатів">3. Фінрезультати (681)</button>
+        <button class="tab-btn" data-tab="682" title="II. Розрахунки з бюджетом">II. Бюджет (682)</button>
+        <button class="tab-btn" data-tab="683" title="III. Рух грошових коштів">III. Рух коштів (683)</button>
+        <button class="tab-btn" data-tab="684" title="IV. Капітальні інвестиції">IV. Капінвестиції (684)</button>
+        <button class="tab-btn" data-tab="688" title="VI. Джерела капітальних інвестицій">VI. Джерела (688)</button>
+        <button class="tab-btn" data-tab="689" title="2. Інформація про бізнес підприємства (розшифровки)">2. Бізнес (689)</button>
+        <button class="tab-btn" data-tab="6895" title="VII. Персонал та оплата праці">VII. Персонал (6895)</button>
+        <button class="tab-btn" data-tab="check3" title="Перевірка контрольних співвідношень">Перевірка</button>
       </nav>
 
       <div class="table-container" id="tabContentArea"></div>

@@ -107,3 +107,4 @@
 ### Task 5: Збереження та синхронізація з GitHub
 
 - [ ] **Step 1: Git commit та push до `origin main`**
+

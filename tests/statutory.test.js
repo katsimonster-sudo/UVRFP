@@ -49,3 +49,4 @@ assert.ok(template584.some(r => r.code === '4000'));
 assert.ok(template588.length > 0);
 
 console.log('✓ statutory.test.js passed');
+

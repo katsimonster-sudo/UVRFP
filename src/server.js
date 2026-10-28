@@ -7,6 +7,8 @@ const { savePeriodData, getPeriodData, getAllPeriods } = require('./storage/peri
 const { extractFinancialReport } = require('./parser/pdfExtractor');
 const { computeFinPlanSuite } = require('./calc/mappingMatrix');
 const { generateFinPlanWorkbook } = require('./excel/excelGenerator');
+const { generateApp3Workbook } = require('./excel/app3Generator');
+const { app3Suite } = require('./calc/app3Template');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -114,6 +116,35 @@ app.get('/api/export-excel/:year/:quarter', async (req, res) => {
   } catch (err) {
     console.error('Export error:', err);
     res.status(500).json({ error: 'Export failed: ' + err.message });
+  }
+});
+
+// 6. Get App3 (Неофіційний Додаток 3) Template Data
+app.get('/api/app3-template', (req, res) => {
+  res.json({ success: true, app3Suite });
+});
+
+// 7. Export App3 to Excel (.xlsx)
+app.get('/api/export-app3/:year/:quarter', async (req, res) => {
+  try {
+    const { year, quarter } = req.params;
+    const rawData = getPeriodData(year, quarter) || {};
+    const priorData = {
+      q1: getPeriodData(year, 1),
+      q2: getPeriodData(year, 2),
+      q3: getPeriodData(year, 3)
+    };
+
+    const suite = computeFinPlanSuite(rawData, priorData);
+    const buffer = await generateApp3Workbook(suite);
+
+    const filename = `Чернетка_Фін_Пл_за_${quarter}_кв_${year}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.send(buffer);
+  } catch (err) {
+    console.error('Export App3 error:', err);
+    res.status(500).json({ error: 'Export App3 failed: ' + err.message });
   }
 });
 

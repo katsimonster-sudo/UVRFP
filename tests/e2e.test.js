@@ -115,8 +115,13 @@ async function runE2E() {
 
   // Verify Form 584 formulas
   const ws584 = wb.getWorksheet('584');
-  const sumFormulaCell = ws584.getCell('C9');
-  assert.ok(sumFormulaCell.formula || ws584.getCell('D9').formula, 'Sheet 584 must have SUM formula');
+  let foundSumFormula = false;
+  ws584.eachRow(row => {
+    if (row.getCell(2).value === '4000') {
+      if (row.getCell(3).formula && row.getCell(3).formula.includes('SUM')) foundSumFormula = true;
+    }
+  });
+  assert.ok(foundSumFormula, 'Sheet 584 row 4000 must have SUM formula');
 
   console.log('✓ All 10 sheets verified successfully');
   console.log('✓ All mathematical cross-form balances match 100%');

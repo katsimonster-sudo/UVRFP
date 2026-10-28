@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node tests/storage.test.js && node tests/parser.test.js && node tests/calc.test.js && node tests/excel.test.js && node tests/e2e.test.js"
+    "test": "node tests/statutory.test.js && node tests/storage.test.js && node tests/parser.test.js && node tests/calc.test.js && node tests/excel.test.js && node tests/server.test.js && node tests/e2e.test.js"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

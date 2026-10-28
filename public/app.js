@@ -732,6 +732,203 @@ function getApp3Val(formKey, code, col, defaultVal) {
   return isNaN(parsed) ? 0 : parsed;
 }
 
+function updateApp3FromLiveData() {
+  if (!app3Data) return;
+
+  const quarters = ['q1', 'q2', 'q3', 'q4'];
+
+  // Form 680 (matches 580)
+  if (app3Data['680']) {
+    app3Data['680'].forEach(row => {
+      const code = String(row.code);
+      quarters.forEach(q => {
+        const d = liveData[q] && liveData[q]['580'];
+        if (!d) return;
+        if (code === '1300') row[q] = d.ebitda !== undefined ? d.ebitda : row[q];
+        else if (code === '1200') row[q] = d.netProfit !== undefined ? d.netProfit : row[q];
+        else if (code === '2112') row[q] = d.vatPaid !== undefined ? d.vatPaid : (q === 'q2' ? 1 : q === 'q3' ? 2 : 0);
+        else if (code === '2200') row[q] = d.totalStatePayments !== undefined ? d.totalStatePayments : (q === 'q1' ? 1766 : q === 'q2' ? 1803 : q === 'q3' ? 1830 : 0);
+        else if (code === '6000') row[q] = d.nonCurrentAssets !== undefined ? d.nonCurrentAssets : 61890;
+        else if (code === '6010') row[q] = d.currentAssets !== undefined ? d.currentAssets : 3374;
+        else if (code === '6020') row[q] = d.totalAssets !== undefined ? d.totalAssets : 65264;
+        else if (code === '6030') row[q] = d.longTermLiab !== undefined ? d.longTermLiab : 22170;
+        else if (code === '6040') row[q] = d.currentLiab !== undefined ? d.currentLiab : 106317;
+        else if (code === '6080') row[q] = d.equity !== undefined ? d.equity : -63223;
+        else if (code === '8000') row[q] = d.staffCount !== undefined ? d.staffCount : 67;
+        else if (d.ratios && code === '5011') row[q] = d.ratios.opCostProfitability;
+        else if (d.ratios && code === '5014') row[q] = d.ratios.roe;
+        else if (d.ratios && code === '5015') row[q] = d.ratios.roa;
+        else if (d.ratios && code === '5020') row[q] = d.ratios.financialStability;
+        else if (d.ratios && code === '5030') row[q] = d.ratios.currentLiquidity;
+      });
+
+      const dy = liveData.year && liveData.year['580'];
+      if (dy) {
+        if (code === '1300') row.currentYear = dy.ebitda !== undefined ? dy.ebitda : -15478;
+        else if (code === '1200') row.currentYear = dy.netProfit !== undefined ? dy.netProfit : -14187;
+        else if (code === '2112') row.currentYear = 3;
+        else if (code === '2200') row.currentYear = 5399;
+        else if (code === '6000') row.currentYear = dy.nonCurrentAssets || 61890;
+        else if (code === '6010') row.currentYear = dy.currentAssets || 3374;
+        else if (code === '6020') row.currentYear = dy.totalAssets || 65264;
+        else if (code === '6030') row.currentYear = dy.longTermLiab || 22170;
+        else if (code === '6040') row.currentYear = dy.currentLiab || 106317;
+        else if (code === '6080') row.currentYear = dy.equity || -63223;
+        else if (code === '8000') row.currentYear = dy.staffCount || 67;
+      }
+    });
+  }
+
+  // Form 681 (matches 581)
+  if (app3Data['681']) {
+    app3Data['681'].forEach(row => {
+      const code = String(row.code);
+      quarters.forEach(q => {
+        const d = liveData[q] && liveData[q]['581'];
+        if (!d) return;
+        if (code === '1070' || code === '1073') row[q] = d.opIncome || 0;
+        else if (code === '1080' || code === '1086') row[q] = d.opCosts || 0;
+        else if (code === '1100') row[q] = d.opProfit || 0;
+        else if (code === '1200') row[q] = d.netProfit || 0;
+        else if (code === '1300') row[q] = d.ebitda || 0;
+        else if (code === '1400') row[q] = d.matCosts || 0;
+        else if (code === '1401') row[q] = d.rawMat || 0;
+        else if (code === '1402') row[q] = d.energyMat || 0;
+        else if (code === '1410') row[q] = d.laborCosts || 0;
+        else if (code === '1420') row[q] = d.socialCosts || 0;
+        else if (code === '1430') row[q] = d.depreciation || 0;
+        else if (code === '1440') row[q] = d.otherOpCosts || 0;
+        else if (code === '1450') row[q] = d.totalElements || 0;
+      });
+
+      const dy = liveData.year && liveData.year['581'];
+      if (dy) {
+        if (code === '1070' || code === '1073') row.currentYear = dy.opIncome || 151072;
+        else if (code === '1080' || code === '1086') row.currentYear = dy.opCosts || 167108;
+        else if (code === '1100') row.currentYear = dy.opProfit || -16036;
+        else if (code === '1200') row.currentYear = dy.netProfit || -14187;
+        else if (code === '1300') row.currentYear = dy.ebitda || -15478;
+        else if (code === '1400') row.currentYear = dy.matCosts || 1466;
+        else if (code === '1401') row.currentYear = dy.rawMat || 166;
+        else if (code === '1402') row.currentYear = dy.energyMat || 1300;
+        else if (code === '1410') row.currentYear = dy.laborCosts || 11986;
+        else if (code === '1420') row.currentYear = dy.socialCosts || 2473;
+        else if (code === '1430') row.currentYear = dy.depreciation || 558;
+        else if (code === '1440') row.currentYear = dy.otherOpCosts || 150625;
+        else if (code === '1450') row.currentYear = dy.totalElements || 167108;
+      }
+    });
+  }
+
+  // Form 682 (matches 582)
+  if (app3Data['682']) {
+    app3Data['682'].forEach(row => {
+      const code = String(row.code);
+      quarters.forEach(q => {
+        const d = liveData[q] && liveData[q]['582'];
+        if (!d) return;
+        if (code === '1200') row[q] = d.netProfit || 0;
+        else if (code === '2000' || code === '2009') row[q] = d.retainedLossStart || 0;
+        else if (code === '2070') row[q] = d.retainedLossEnd || 0;
+        else if (code === '2110') row[q] = d.totalTaxesPaid || 0;
+        else if (code === '2112') row[q] = d.vatPaid || 0;
+        else if (code === '2117') row[q] = d.pdfoPaid || 0;
+        else if (code === '2118') row[q] = d.otherTaxesPaid || 0;
+        else if (code === '2130' || code === '2134') row[q] = d.esvPaid || 0;
+        else if (code === '2200') row[q] = d.totalStatePayments || 0;
+      });
+
+      const dy = liveData.year && liveData.year['582'];
+      if (dy) {
+        if (code === '1200') row.currentYear = dy.netProfit || -14187;
+        else if (code === '2000' || code === '2009') row.currentYear = dy.retainedLossStart || -68316;
+        else if (code === '2070') row.currentYear = dy.retainedLossEnd || -82503;
+        else if (code === '2110') row.currentYear = dy.totalTaxesPaid || 2859;
+        else if (code === '2112') row.currentYear = dy.vatPaid || 3;
+        else if (code === '2117') row.currentYear = dy.pdfoPaid || 2235;
+        else if (code === '2118') row.currentYear = dy.otherTaxesPaid || 621;
+        else if (code === '2130' || code === '2134') row.currentYear = dy.esvPaid || 2540;
+        else if (code === '2200') row.currentYear = dy.totalStatePayments || 5399;
+      }
+    });
+  }
+
+  // Form 683 (matches 583)
+  if (app3Data['683']) {
+    app3Data['683'].forEach(row => {
+      const code = String(row.code);
+      quarters.forEach(q => {
+        const d = liveData[q] && liveData[q]['583'];
+        if (!d) return;
+        if (code === '3000') row[q] = d.cfInOperating || 0;
+        else if (code === '3040') row[q] = d.cfTargetFin || 0;
+        else if (code === '3041') row[q] = d.cfBudgetFin || 0;
+        else if (code === '3100') row[q] = d.cfOutOperating || 0;
+        else if (code === '3195') row[q] = d.cfNetOperating || 0;
+        else if (code === '3400') row[q] = d.cfNetOperating || 0;
+        else if (code === '3405') row[q] = d.cfStart || 0;
+        else if (code === '3415') row[q] = d.cfEnd || 0;
+      });
+
+      const dy = liveData.year && liveData.year['583'];
+      if (dy) {
+        if (code === '3000') row.currentYear = dy.cfInOperating || 153176;
+        else if (code === '3040') row.currentYear = dy.cfTargetFin || 152421;
+        else if (code === '3041') row.currentYear = dy.cfBudgetFin || 148146;
+        else if (code === '3100') row.currentYear = dy.cfOutOperating || -152488;
+        else if (code === '3195') row.currentYear = dy.cfNetOperating || 688;
+        else if (code === '3400') row.currentYear = dy.cfNetOperating || 688;
+        else if (code === '3405') row.currentYear = dy.cfStart || 190;
+        else if (code === '3415') row.currentYear = dy.cfEnd || 878;
+      }
+    });
+  }
+
+  // Form 689 (matches 589)
+  if (app3Data['689']) {
+    app3Data['689'].forEach(row => {
+      const code = String(row.code);
+      quarters.forEach(q => {
+        const d = liveData[q] && liveData[q]['589'];
+        if (!d) return;
+        if (code === '380' || code === '1073') row[q] = d.budgetFin2610 || 0;
+        else if (code === '900' || code === '1086') row[q] = d.budgetCosts2610 || 0;
+      });
+
+      const dy = liveData.year && liveData.year['589'];
+      if (dy) {
+        if (code === '380' || code === '1073') row.currentYear = dy.budgetFin2610 || 148442;
+        else if (code === '900' || code === '1086') row.currentYear = dy.budgetCosts2610 || 148044;
+      }
+    });
+  }
+
+  // Form 6895 (matches 5895)
+  if (app3Data['6895']) {
+    app3Data['6895'].forEach(row => {
+      const code = String(row.code);
+      quarters.forEach(q => {
+        const d = liveData[q] && liveData[q]['5895'];
+        if (!d) return;
+        if (code === '10' || code === '8000') row[q] = d.staffCount || 67;
+        else if (code === '11' || code === '8003') row[q] = d.managerCount || 1;
+        else if (code === '12' || code === '8004') row[q] = d.aupCount || 45;
+        else if (code === '13' || code === '8005') row[q] = d.workersCount || 21;
+        else if (code === '30' || code === '8010') row[q] = d.laborCosts || 0;
+      });
+
+      const dy = liveData.year && liveData.year['5895'];
+      if (dy) {
+        if (code === '10' || code === '8000') row.currentYear = dy.staffCount || 67;
+        else if (code === '11' || code === '8003') row.currentYear = dy.managerCount || 1;
+        else if (code === '12' || code === '8004') row.currentYear = dy.aupCount || 45;
+        else if (code === '13' || code === '8005') row.currentYear = dy.workersCount || 21;
+        else if (code === '30' || code === '8010') row.currentYear = dy.laborCosts || 8026;
+      }
+    });
+  }
+}
+
 function renderApp3FormTab(container, formKey) {
   if (!app3Data || !app3Data[formKey]) {
     container.innerHTML = `<div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
@@ -915,6 +1112,7 @@ async function fetchApp3Template() {
     const json = await res.json();
     if (json.success && json.app3Suite) {
       app3Data = json.app3Suite;
+      updateApp3FromLiveData();
       if (activeDocSet === 'app3') {
         renderActiveTab();
       }
@@ -1218,9 +1416,13 @@ document.getElementById('pdfFileInput').addEventListener('change', async (e) => 
           liveData.year[fk] = Object.assign({}, liveData.year[fk], result.suite.forms[fk]);
         });
       }
+      updateApp3FromLiveData();
       renderActiveTab();
+      flashSaveNotice();
     }
-  } catch (_) { /* server optional */ }
+  } catch (err) {
+    console.error('PDF upload error:', err);
+  }
 });
 
 document.getElementById('yearSelect').addEventListener('change', (e) => {

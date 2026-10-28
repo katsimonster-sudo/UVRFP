@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FP-2025 Studio — Автоматизація виконання фінансового плану</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ---- Quarter selector in header ---- */
+    .qtr-header-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 6px;
+      padding: 2px;
+    }
+    .qtr-header-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .qtr-header-btn:hover { background: rgba(74,158,255,0.2); color: #fff; }
+    .qtr-header-btn.active { background: var(--accent); color: #fff; font-weight: 700; }
+
+    /* ---- Quarter filter bar under pane ---- */
+    .qtr-bar {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 5px 10px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .qtr-bar label { font-size: 0.75rem; color: var(--text-muted); margin-right: 2px; white-space: nowrap; }
+    .qtr-btn {
+      background: var(--bg-hover);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 11px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .qtr-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .qtr-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+    .qtr-hint { margin-left: auto; font-size: 0.72rem; color: var(--text-muted); }
+
+    /* ---- Multi-column fin-table adjustments ---- */
+    .fin-table th, .fin-table td { white-space: nowrap; }
+    .fin-table th:first-child, .fin-table td:first-child { white-space: normal; min-width: 220px; }
+    .col-year { background: rgba(74,158,255,0.08); font-weight: 700; }
+    .col-q1 { background: rgba(100,200,100,0.05); }
+    .col-q2 { background: rgba(200,150,50,0.05); }
+    .col-q3 { background: rgba(200,80,80,0.05); }
+    .col-q4 { background: rgba(150,100,200,0.05); }
+
+    /* ---- Editable cell ---- */
+    .editable-cell { cursor: pointer; }
+    .editable-cell:hover { outline: 1px dashed var(--accent); background: rgba(74,158,255,0.08) !important; }
+
+    /* ---- PDF canvas ---- */
+    #pdfCanvasWrap {
+      display: none;
+      overflow: auto;
+      flex: 1;
+      background: #2e3440;
+      text-align: center;
+      padding: 16px;
+    }
+    #pdfCanvas {
+      display: inline-block;
+      margin: 0 auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      background: #fff;
+    }
+
+    /* ---- Save notice toast ---- */
+    #saveNotice {
+      position: fixed; bottom: 20px; right: 20px;
+      background: var(--success); color: #fff;
+      padding: 8px 18px; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 600;
+      opacity: 0; transition: opacity 0.3s;
+      pointer-events: none; z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="saveNotice">✓ Збережено</div>
+
+  <!-- ===== TOP HEADER ===== -->
+  <header class="app-header">
+    <div class="app-title">
+      📊 FP-2025 Studio <span>ДП "ОК "Укрвуглереструктуризація"</span>
+    </div>
+
+    <div class="header-actions">
+      <div id="balanceBadge" class="status-pill success">● Контрольні рівності зійшлися</div>
+
+      <!-- Quarter selector in header -->
+      <div class="qtr-header-bar" title="Оберіть звітний квартал">
+        <button class="qtr-header-btn" data-qtr="q1">I кв.</button>
+        <button class="qtr-header-btn" data-qtr="q2">II кв.</button>
+        <button class="qtr-header-btn active" data-qtr="q3">III кв.</button>
+        <button class="qtr-header-btn" data-qtr="q4">IV кв.</button>
+        <button class="qtr-header-btn" data-qtr="year">📆 Рік</button>
+      </div>
+
+      <div style="display:flex;gap:6px;align-items:center;">
+        <label for="yearSelect" style="font-size:0.78rem;color:var(--text-muted)">Рік:</label>
+        <select id="yearSelect" style="background:var(--bg-hover);color:white;border:1px solid var(--border);padding:3px 7px;border-radius:4px;font-size:0.78rem;">
+          <option value="2026">2026</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+        </select>
+      </div>
+
+      <input type="file" id="pdfFileInput" accept="application/pdf" style="position:fixed;top:-1000px;left:-1000px;opacity:0;">
+      <button class="btn btn-secondary" onclick="document.getElementById('pdfFileInput').click()">
+        📁 Завантажити скан PDF
+      </button>
+      <button id="exportExcelBtn" class="btn btn-success">📥 Експорт в Excel (.xlsx)</button>
+    </div>
+  </header>
+
+  <!-- ===== SPLIT VIEW ===== -->
+  <main class="main-container">
+
+    <!-- LEFT: PDF Viewer -->
+    <section class="pdf-pane">
+      <div class="pane-toolbar">
+        <div><strong>Скан PDF:</strong> <span id="currentPdfName">Завантажте PDF ↑</span></div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn btn-secondary" style="padding:2px 8px;font-size:0.9rem" id="prevPageBtn" title="Попередня сторінка">◀</button>
+          <span style="font-size:0.82rem;white-space:nowrap;">Стор. <strong id="currentPageNum">—</strong> з <strong id="totalPageNum">—</strong></span>
+          <button class="btn btn-secondary" style="padding:2px 8px;font-size:0.9rem" id="nextPageBtn" title="Наступна сторінка">▶</button>
+          
+          <div style="width:1px;height:16px;background:var(--border);margin:0 2px;"></div>
+
+          <button class="btn btn-secondary" style="padding:2px 8px;font-size:0.9rem;font-weight:bold" id="zoomOutBtn" title="Зменшити">−</button>
+          <span id="zoomLevelLabel" style="font-size:0.8rem;min-width:38px;text-align:center;font-weight:600;color:var(--text-bright)">140%</span>
+          <button class="btn btn-secondary" style="padding:2px 8px;font-size:0.9rem;font-weight:bold" id="zoomInBtn" title="Збільшити">+</button>
+          <button class="btn btn-secondary" style="padding:2px 6px;font-size:0.75rem" id="zoomFitBtn" title="За шириною вікна">↔ Ширина</button>
+          <button class="btn btn-secondary" style="padding:2px 6px;font-size:0.75rem" id="zoomResetBtn" title="Масштаб 100%">100%</button>
+        </div>
+      </div>
+
+      <div class="pdf-viewer-frame" id="pdfViewerFrame" style="display:flex;flex-direction:column;overflow:hidden;">
+        <!-- Placeholder -->
+        <div class="pdf-page-simulated" id="pdfPageContent" style="overflow:auto;flex:1;">
+          <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
+            <div style="font-size:3rem;margin-bottom:16px;">📄</div>
+            <div style="font-size:1.1rem;font-weight:600;margin-bottom:8px;">Тут відображається скан PDF</div>
+            <div style="font-size:0.85rem;">Натисніть <strong>"Завантажити скан PDF"</strong> вгорі<br>Навігація сторінками: кнопки ◀ ▶</div>
+          </div>
+        </div>
+        <!-- Canvas after load -->
+        <div id="pdfCanvasWrap"><canvas id="pdfCanvas"></canvas></div>
+      </div>
+    </section>
+
+    <!-- RIGHT: Data pane -->
+    <section class="data-pane">
+
+      <!-- Quarter filter bar -->
+      <div class="qtr-bar">
+        <label>📅 Показати:</label>
+        <button class="qtr-btn active" data-qtr="year">Рік (всі кв.)</button>
+        <button class="qtr-btn" data-qtr="q1">I кв. + Рік</button>
+        <button class="qtr-btn" data-qtr="q2">I+II кв. + Рік</button>
+        <button class="qtr-btn" data-qtr="q3">I+II+III кв. + Рік</button>
+        <button class="qtr-btn" data-qtr="q4">Всі кв. + Рік</button>
+        <span class="qtr-hint">✏️ Клік по цифрі — редагування</span>
+      </div>
+
+      <!-- Form tabs -->
+      <nav class="tabs-bar">
+        <button class="tab-btn active" data-tab="580">580</button>
+        <button class="tab-btn" data-tab="581">581</button>
+        <button class="tab-btn" data-tab="582">582</button>
+        <button class="tab-btn" data-tab="583">583</button>
+        <button class="tab-btn" data-tab="584">584</button>
+        <button class="tab-btn" data-tab="588">588</button>
+        <button class="tab-btn" data-tab="589">589</button>
+        <button class="tab-btn" data-tab="5895">5895</button>
+        <button class="tab-btn" data-tab="raw">Дані_ПДФ</button>
+        <button class="tab-btn" data-tab="check">Перевірка</button>
+      </nav>
+
+      <div class="table-container" id="tabContentArea"></div>
+
+      <footer class="pane-footer">
+        <span id="footerStatusText">Відображається: Рік — всі квартали. Клікніть цифру для редагування.</span>
+        <span>Q4 = Рік − (Q1 + Q2 + Q3)</span>
+      </footer>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

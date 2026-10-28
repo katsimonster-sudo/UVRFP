@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+package-lock.json.backup
+
+# Temporary uploads (keep directory via .gitkeep)
+data/uploads/*
+!data/uploads/.gitkeep
+
+# Temporary brainstorming session cache
+.superpowers/
+
+# OS and logs
+*.log
+.DS_Store
+Thumbs.db

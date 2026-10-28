@@ -99,7 +99,7 @@
     .editable-cell { cursor: pointer; }
     .editable-cell:hover { outline: 1px dashed var(--accent); background: rgba(74,158,255,0.08) !important; }
 
-    /* ---- PDF canvas ---- */
+    /* ---- PDF Canvas ---- */
     #pdfCanvasWrap {
       display: none;
       overflow: auto;
@@ -113,6 +113,72 @@
       margin: 0 auto;
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
       background: #fff;
+    }
+
+    /* ---- PDF Quarter Switcher Bar ---- */
+    .pdf-qtr-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: #0f172a;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .pdf-qtr-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .pdf-qtr-tabs {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .pdf-qtr-tab-btn {
+      background: var(--bg-hover);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .pdf-qtr-tab-btn:hover {
+      background: rgba(59, 130, 246, 0.2);
+      color: #fff;
+    }
+    .pdf-qtr-tab-btn.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #3b82f6;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+    }
+    .pqtr-status {
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+    .pqtr-status.has-pdf {
+      background: rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      font-weight: 700;
+    }
+    .pdf-qtr-tab-btn.active .pqtr-status.has-pdf {
+      background: #10b981;
+      color: #fff;
     }
 
     /* ---- Save notice toast ---- */
@@ -171,6 +237,34 @@
 
     <!-- LEFT: PDF Viewer -->
     <section class="pdf-pane">
+      <!-- PDF Quarter Selector Bar -->
+      <div class="pdf-qtr-bar">
+        <div class="pdf-qtr-title">
+          <span>📄 Скан за кв:</span>
+        </div>
+        <div class="pdf-qtr-tabs" id="pdfQuarterTabs">
+          <button class="pdf-qtr-tab-btn" data-pqtr="1">
+            <span class="pqtr-name">I кв.</span>
+            <span class="pqtr-status" id="pqtrStatus1">○</span>
+          </button>
+          <button class="pdf-qtr-tab-btn" data-pqtr="2">
+            <span class="pqtr-name">II кв.</span>
+            <span class="pqtr-status" id="pqtrStatus2">○</span>
+          </button>
+          <button class="pdf-qtr-tab-btn active" data-pqtr="3">
+            <span class="pqtr-name">III кв.</span>
+            <span class="pqtr-status has-pdf" id="pqtrStatus3">● PDF</span>
+          </button>
+          <button class="pdf-qtr-tab-btn" data-pqtr="4">
+            <span class="pqtr-name">IV кв.</span>
+            <span class="pqtr-status" id="pqtrStatus4">○</span>
+          </button>
+        </div>
+        <button class="btn btn-secondary" id="btnUploadForCurrentPdfQtr" style="padding:3px 9px;font-size:0.75rem;margin-left:auto;" title="Завантажити/оновити скан саме для обраного кварталу">
+          📤 Завантажити скан <span id="currentPdfQtrBadge">III кв.</span>
+        </button>
+      </div>
+
       <div class="pane-toolbar">
         <div><strong>Скан PDF:</strong> <span id="currentPdfName">Завантажте PDF ↑</span></div>
         <div style="display:flex;gap:6px;align-items:center;">

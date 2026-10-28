@@ -23,6 +23,8 @@ let pdfTotalPages = 0;
 let pdfjsLib = null;
 let pdfScale = 1.4;
 let pdfRenderTask = null;
+let currentPdfQuarter = 3;
+let pdfsStatusCache = {};
 
 // =====================================================
 //  ENTERPRISE METADATA (Додаток 2)
@@ -1296,6 +1298,113 @@ if (pdfViewerFrame) {
 }
 
 // =====================================================
+//  PDF QUARTER MANAGEMENT & SWITCHING
+// =====================================================
+function triggerUploadForQuarter(qNum) {
+  if (qNum) {
+    currentPdfQuarter = Number(qNum);
+    activeQuarter = 'q' + qNum;
+  }
+  const input = document.getElementById('pdfFileInput');
+  if (input) input.click();
+}
+
+async function refreshPdfStatus() {
+  try {
+    const res = await fetch(`/api/pdfs-status/${currentYear}`);
+    if (!res.ok) return;
+    const json = await res.json();
+    if (json.quarters) {
+      pdfsStatusCache = json.quarters;
+      for (let q = 1; q <= 4; q++) {
+        const dot = document.getElementById(`pqtrStatus${q}`);
+        if (dot) {
+          const avail = json.quarters[q] && json.quarters[q].available;
+          if (avail) {
+            dot.className = 'pqtr-status has-pdf';
+            dot.textContent = '● PDF';
+            dot.title = json.quarters[q].filename || `Скан за ${q} кв. наявний`;
+          } else {
+            dot.className = 'pqtr-status';
+            dot.textContent = '○';
+            dot.title = `Скан за ${q} кв. відсутній`;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Could not refresh PDF status:', err.message);
+  }
+}
+
+async function loadQuarterPdf(qNum, syncTables = true) {
+  currentPdfQuarter = Number(qNum) || 3;
+
+  // 1. Update UI tabs in PDF pane
+  document.querySelectorAll('.pdf-qtr-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.getAttribute('data-pqtr')) === currentPdfQuarter);
+  });
+
+  const badge = document.getElementById('currentPdfQtrBadge');
+  if (badge) badge.textContent = `${currentPdfQuarter} кв.`;
+
+  // 2. Synchronize table activeQuarter if requested
+  if (syncTables) {
+    activeQuarter = 'q' + currentPdfQuarter;
+    document.querySelectorAll('.qtr-header-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-qtr') === activeQuarter);
+    });
+    renderActiveTab();
+    const statusEl = document.getElementById('footerStatusText');
+    if (statusEl) {
+      statusEl.textContent = `Відображається: ${activeDocSet === 'app2' ? 'Офіційний Додаток 2' : 'Неофіційний Додаток 3'} (${getQuarterLabel(activeQuarter)}). Клік для редагування.`;
+    }
+  }
+
+  // 3. Fetch PDF file for this quarter
+  const pdfNameEl = document.getElementById('currentPdfName');
+  if (pdfNameEl) pdfNameEl.textContent = `Завантаження ${currentPdfQuarter} кв...`;
+
+  try {
+    const res = await fetch(`/api/pdf/${currentYear}/${currentPdfQuarter}`);
+    if (res.ok) {
+      const buf = await res.arrayBuffer();
+      const info = (pdfsStatusCache && pdfsStatusCache[currentPdfQuarter]) || {};
+      const filename = info.filename || `Звіт_${currentPdfQuarter}кв_${currentYear}.pdf`;
+      await loadPdf(buf);
+      if (pdfNameEl) pdfNameEl.textContent = `${filename} (${pdfTotalPages} стор.)`;
+    } else {
+      // PDF not found for this quarter
+      pdfDoc = null;
+      document.getElementById('pdfCanvasWrap').style.display = 'none';
+      const placeholder = document.getElementById('pdfPageContent');
+      if (placeholder) {
+        placeholder.style.display = 'block';
+        placeholder.innerHTML = `
+          <div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
+            <div style="font-size:3rem;margin-bottom:12px;">📑</div>
+            <div style="font-size:1.15rem;font-weight:700;color:var(--text-main);margin-bottom:8px;">Скан звіту за ${currentPdfQuarter} квартал ${currentYear} не завантажено</div>
+            <div style="font-size:0.85rem;margin-bottom:20px;color:var(--text-muted);line-height:1.5;">
+              Щоб перевірити, звідки тягнуться показники за ${currentPdfQuarter} квартал,<br>
+              завантажте первинний скан або PDF фінансової звітності.
+            </div>
+            <button class="btn btn-primary" onclick="triggerUploadForQuarter(${currentPdfQuarter})" style="padding:8px 20px;font-size:0.88rem;">
+              📁 Завантажити скан за ${currentPdfQuarter} кв.
+            </button>
+          </div>
+        `;
+      }
+      if (pdfNameEl) pdfNameEl.textContent = `«Не завантажено»`;
+      document.getElementById('currentPageNum').textContent = '—';
+      document.getElementById('totalPageNum').textContent = '—';
+    }
+  } catch (err) {
+    console.error('Error fetching quarter PDF:', err);
+    if (pdfNameEl) pdfNameEl.textContent = `Помилка завантаження`;
+  }
+}
+
+// =====================================================
 //  EVENTS & INITIALIZATION
 // =====================================================
 
@@ -1356,6 +1465,10 @@ document.querySelectorAll('.qtr-header-btn').forEach(btn => {
     btn.classList.add('active');
     const qtr = btn.getAttribute('data-qtr');
     activeQuarter = qtr;
+    if (qtr.startsWith('q')) {
+      const qNum = parseInt(qtr.replace('q', ''), 10);
+      loadQuarterPdf(qNum, false);
+    }
     renderActiveTab();
     document.getElementById('footerStatusText').textContent =
       activeMode === 'statutory'
@@ -1363,6 +1476,21 @@ document.querySelectorAll('.qtr-header-btn').forEach(btn => {
         : `Відображається: Порівняння кварталів (${activeMode}). Клік по цифрі для редагування.`;
   });
 });
+
+// PDF Quarter Tabs in Left Pane
+document.querySelectorAll('.pdf-qtr-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const qNum = parseInt(btn.getAttribute('data-pqtr'), 10);
+    loadQuarterPdf(qNum, true);
+  });
+});
+
+const btnUploadForQtr = document.getElementById('btnUploadForCurrentPdfQtr');
+if (btnUploadForQtr) {
+  btnUploadForQtr.addEventListener('click', () => {
+    triggerUploadForQuarter(currentPdfQuarter);
+  });
+}
 
 // Tabs
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1396,6 +1524,7 @@ if (exportApp3Btn) {
 document.getElementById('pdfFileInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  const targetQuarter = currentPdfQuarter || (activeQuarter === 'q1' ? 1 : activeQuarter === 'q2' ? 2 : activeQuarter === 'q3' ? 3 : 4);
   document.getElementById('currentPdfName').textContent = file.name + ' (завантаження...)';
   const buf = await file.arrayBuffer();
   await loadPdf(buf.slice(0));
@@ -1404,12 +1533,13 @@ document.getElementById('pdfFileInput').addEventListener('change', async (e) => 
   const formData = new FormData();
   formData.append('pdfFile', file);
   formData.append('year', currentYear);
-  formData.append('quarter', activeQuarter === 'q1' ? 1 : activeQuarter === 'q2' ? 2 : activeQuarter === 'q3' ? 3 : 4);
+  formData.append('quarter', targetQuarter);
 
   try {
     const res = await fetch('/api/upload-pdf', { method: 'POST', body: formData });
     const result = await res.json();
     if (result.success && result.suite) {
+      const qKey = `q${targetQuarter}`;
       if (result.suite.forms) {
         // 1. Рік / наростаючий підсумок отримує кумулятивні форми
         Object.keys(result.suite.forms).forEach(fk => {
@@ -1419,11 +1549,17 @@ document.getElementById('pdfFileInput').addEventListener('change', async (e) => 
         // 2. Звітний квартал отримує чисті ізольовані дельти (за мінусом попередніх кварталів!)
         const qForms = result.suite.deltaForms || result.suite.forms;
         Object.keys(qForms).forEach(fk => {
-          liveData[activeQuarter][fk] = Object.assign({}, liveData[activeQuarter][fk], qForms[fk]);
+          liveData[qKey][fk] = Object.assign({}, liveData[qKey][fk], qForms[fk]);
         });
       }
+      activeQuarter = qKey;
+      document.querySelectorAll('.qtr-header-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-qtr') === activeQuarter);
+      });
       updateApp3FromLiveData();
       renderActiveTab();
+      await refreshPdfStatus();
+      await loadQuarterPdf(targetQuarter, false);
       flashSaveNotice();
     }
   } catch (err) {
@@ -1431,9 +1567,11 @@ document.getElementById('pdfFileInput').addEventListener('change', async (e) => 
   }
 });
 
-document.getElementById('yearSelect').addEventListener('change', (e) => {
-  currentYear = parseInt(e.target.value);
+document.getElementById('yearSelect').addEventListener('change', async (e) => {
+  currentYear = parseInt(e.target.value, 10);
   renderActiveTab();
+  await refreshPdfStatus();
+  await loadQuarterPdf(currentPdfQuarter, false);
 });
 
 // Preload App 3 data
@@ -1488,6 +1626,10 @@ async function autoLoadStoredPeriod() {
     if (statusEl) {
       statusEl.textContent = `✅ Дані ${latest.year} Q${latest.quarter} завантажено автоматично.`;
     }
+
+    // 5. Refresh PDF status and load the PDF for the active quarter
+    await refreshPdfStatus();
+    await loadQuarterPdf(latest.quarter, false);
   } catch (err) {
     console.warn('Auto-load stored period failed:', err.message);
   }
@@ -1495,6 +1637,9 @@ async function autoLoadStoredPeriod() {
 
 // Init
 renderActiveTab();
+
+// Initial load of PDF status and default Q3 PDF
+refreshPdfStatus().then(() => loadQuarterPdf(3, false));
 
 // Auto-load after slight delay to allow template fetch to complete
 setTimeout(autoLoadStoredPeriod, 800);

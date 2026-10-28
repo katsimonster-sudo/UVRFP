@@ -16,9 +16,57 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Store uploaded PDFs temporarily in data/uploads
+// Store uploaded PDFs in data/uploads
 const uploadDir = path.join(__dirname, '../data/uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const pdfMetaPath = path.join(uploadDir, 'pdf_meta.json');
+function getPdfMeta() {
+  if (fs.existsSync(pdfMetaPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(pdfMetaPath, 'utf8'));
+    } catch (_) {}
+  }
+  return {};
+}
+function savePdfMeta(meta) {
+  try {
+    fs.writeFileSync(pdfMetaPath, JSON.stringify(meta, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error saving PDF meta:', err);
+  }
+}
+
+function resolveQuarterPdf(year, quarter) {
+  const customPath = path.join(uploadDir, `${year}_q${quarter}.pdf`);
+  if (fs.existsSync(customPath)) {
+    const meta = getPdfMeta();
+    const info = meta[`${year}_q${quarter}`] || {};
+    return {
+      filePath: customPath,
+      filename: info.filename || `${year}_q${quarter}.pdf`,
+      available: true
+    };
+  }
+
+  // Fallback for default Q3 scan
+  if (Number(year) === 2026 && Number(quarter) === 3) {
+    const def3 = path.join(__dirname, '../data/3квЛМ001.pdf');
+    if (fs.existsSync(def3)) {
+      return {
+        filePath: def3,
+        filename: '3квЛМ001.pdf',
+        available: true
+      };
+    }
+  }
+
+  return {
+    filePath: null,
+    filename: null,
+    available: false
+  };
+}
 
 const upload = multer({ dest: uploadDir });
 
@@ -47,6 +95,33 @@ app.get('/api/period/:year/:quarter', (req, res) => {
   res.json({ year: Number(year), quarter: qNum, suite });
 });
 
+// 2a. Get PDF file for a specific quarter
+app.get('/api/pdf/:year/:quarter', (req, res) => {
+  const { year, quarter } = req.params;
+  const resolved = resolveQuarterPdf(year, quarter);
+  if (!resolved.available || !resolved.filePath) {
+    return res.status(404).json({ error: 'PDF not found for period', available: false });
+  }
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(resolved.filename)}"`);
+  fs.createReadStream(resolved.filePath).pipe(res);
+});
+
+// 2b. Status of available PDFs across quarters for a year
+app.get('/api/pdfs-status/:year', (req, res) => {
+  const { year } = req.params;
+  const quarters = {};
+  for (let q = 1; q <= 4; q++) {
+    const resolved = resolveQuarterPdf(year, q);
+    quarters[q] = {
+      available: resolved.available,
+      filename: resolved.filename
+    };
+  }
+  res.json({ year: Number(year), quarters });
+});
+
 // 3. Upload PDF and parse
 app.post('/api/upload-pdf', upload.single('pdfFile'), async (req, res) => {
   try {
@@ -56,6 +131,21 @@ app.post('/api/upload-pdf', upload.single('pdfFile'), async (req, res) => {
 
     const year = Number(req.body.year) || 2026;
     const quarter = Number(req.body.quarter) || 3;
+
+    // Permanently save uploaded PDF for this specific quarter
+    const destPdfPath = path.join(uploadDir, `${year}_q${quarter}.pdf`);
+    try {
+      fs.copyFileSync(req.file.path, destPdfPath);
+      const meta = getPdfMeta();
+      meta[`${year}_q${quarter}`] = {
+        filename: req.file.originalname || `${year}_q${quarter}.pdf`,
+        size: req.file.size,
+        uploadedAt: new Date().toISOString()
+      };
+      savePdfMeta(meta);
+    } catch (saveErr) {
+      console.warn('Warning: could not persist PDF file:', saveErr.message);
+    }
 
     const buffer = fs.readFileSync(req.file.path);
     const parsed = await extractFinancialReport(buffer);

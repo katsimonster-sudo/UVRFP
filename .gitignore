@@ -2,9 +2,11 @@
 node_modules/
 package-lock.json.backup
 
-# Temporary uploads (keep directory via .gitkeep)
+# Temporary uploads (keep quarterly scans and meta)
 data/uploads/*
 !data/uploads/.gitkeep
+!data/uploads/pdf_meta.json
+!data/uploads/*_q*.pdf
 
 # Temporary brainstorming session cache
 .superpowers/

@@ -1,7 +1,7 @@
 {
   "year": 2026,
   "quarter": 3,
-  "updatedAt": "2026-10-28T11:45:24.676Z",
+  "updatedAt": "2026-10-29T08:27:34.767Z",
   "data": {
     "1633": {
       "41": {
@@ -53,43 +53,21 @@
       }
     },
     "f2": {
-      "26": {
-        "value": 0,
+      "70": {
+        "value": 6811,
         "allValues": [
+          6811,
           0
         ],
-        "rawLine": "26 00"
+        "rawLine": "70 68'11i  ^"
       },
-      "30": {
-        "value": 0,
+      "2026": {
+        "value": 9,
         "allValues": [
-          0,
-          2026
+          9,
+          3
         ],
-        "rawLine": "craHoM  Ha  30  aepecar  2026"
-      },
-      "36": {
-        "value": 0,
-        "allValues": [
-          0
-        ],
-        "rawLine": "36  ToK"
-      },
-      "218": {
-        "value": 0,
-        "allValues": [
-          0
-        ],
-        "rawLine": "218  r"
-      },
-      "227": {
-        "value": 0,
-        "allValues": [
-          0,
-          0,
-          0
-        ],
-        "rawLine": "P  tpra  227  0Q.2.  <Inuri  Burparu)"
+        "rawLine": "2026  09  3"
       },
       "2120": {
         "value": 151072
@@ -101,11 +79,7 @@
         "value": -16036
       },
       "2240": {
-        "value": 0,
-        "allValues": [
-          0
-        ],
-        "rawLine": "2240 {'859"
+        "value": 4859
       },
       "2270": {
         "value": -3010
@@ -117,7 +91,7 @@
           0,
           2460
         ],
-        "rawLine": "xis  2350 2355  m  2460"
+        "rawLine": ":Cynyoruii  goxi11  (cylra 1t xis  2350 2355  m  2460"
       },
       "2355": {
         "value": -14187
@@ -142,24 +116,10 @@
         "allValues": [
           148442
         ],
-        "rawLine": "2610 148442"
-      },
-      "09": {
-        "value": 3,
-        "allValues": [
-          3
-        ],
-        "rawLine": "09  3"
+        "rawLine": "Bcuoro  KEKB  2610 148442"
       }
     },
     "f3": {
-      "16": {
-        "value": 0,
-        "allValues": [
-          0
-        ],
-        "rawLine": "16  i6l"
-      },
       "20": {
         "value": 7,
         "allValues": [
@@ -173,29 +133,14 @@
           8,
           0
         ],
-        "rawLine": "22  8l  ,"
+        "rawLine": "r)  noro!Hr  BH.rdriH  rror  22  8l  ,"
       },
-      "30": {
-        "value": 0,
+      "28": {
+        "value": 2,
         "allValues": [
-          0,
-          2026
+          2
         ],
-        "rawLine": "Ha  30  aepecur  2026"
-      },
-      "31": {
-        "value": 0,
-        "allValues": [
-          0
-        ],
-        "rawLine": "31 l3'453'682"
-      },
-      "38": {
-        "value": 0,
-        "allValues": [
-          0
-        ],
-        "rawLine": "38  nepioaa"
+        "rawLine": "28 2tt)"
       },
       "50": {
         "value": 689,
@@ -204,12 +149,13 @@
         ],
         "rawLine": "50 689"
       },
-      "60": {
-        "value": 0,
+      "66": {
+        "value": 5,
         "allValues": [
-          0
+          5,
+          5
         ],
-        "rawLine": "60 t65'796"
+        "rawLine": "66 5t 5l"
       },
       "82": {
         "value": 281,
@@ -235,40 +181,51 @@
         ],
         "rawLine": "129  129"
       },
-      "133": {
-        "value": 0,
+      "151": {
+        "value": 299729,
         "allValues": [
+          299729,
+          0,
+          8,
           0
         ],
-        "rawLine": "Haxiury  MiBexoHoMpo3BHr&l  sia  22.  10.2015  N!  133  I"
-      },
-      "240": {
-        "value": 0,
-        "allValues": [
-          0
-        ],
-        "rawLine": "240  t59"
+        "rawLine": "4t9 2l  {t 151  299729 t.t  8  t46"
       },
       "293": {
         "value": 4275,
         "allValues": [
-          4275
+          4275,
+          2,
+          0,
+          3
         ],
-        "rawLine": "2t'409 144,442 293 4'275"
+        "rawLine": "2t'409 144,442 293 4'275 2l't  t  3"
       },
-      "601": {
-        "value": 303,
+      "301": {
+        "value": 601,
         "allValues": [
+          601,
+          303,
           303
         ],
-        "rawLine": "601 303"
+        "rawLine": "6l lr9 t03 301 601 303 303"
+      },
+      "564": {
+        "value": 564,
+        "allValues": [
+          564,
+          564
+        ],
+        "rawLine": "'7t) 564 564 564"
       },
       "605": {
         "value": 605,
         "allValues": [
-          605
+          605,
+          303,
+          303
         ],
-        "rawLine": "605 605"
+        "rawLine": "605 605 303 303"
       },
       "621": {
         "value": 6,
@@ -278,6 +235,13 @@
         ],
         "rawLine": "621  6t  I"
       },
+      "838": {
+        "value": 148,
+        "allValues": [
+          148
+        ],
+        "rawLine": "t52 838 148',t46"
+      },
       "866": {
         "value": 8,
         "allValues": [
@@ -285,12 +249,15 @@
         ],
         "rawLine": "l0 866 8s6"
       },
-      "2401": {
-        "value": 0,
+      "2520": {
+        "value": 0.2,
         "allValues": [
+          0.2,
+          0,
+          0,
           0
         ],
-        "rawLine": "2401  r"
+        "rawLine": "prana  2520  0.2  \"Iutui  oneDauiiini  entparn\""
       },
       "2610": {
         "value": 240,
@@ -329,19 +296,13 @@
       "3415": {
         "value": 878
       },
-      "30608": {
-        "value": 0,
-        "allValues": [
-          0
-        ],
-        "rawLine": "30608  r3aHru"
-      },
       "02": {
         "value": 0.02,
         "allValues": [
-          0.02
+          0.02,
+          0
         ],
-        "rawLine": "Ne*  Ronrn  NPCI  !  02  00.02"
+        "rawLine": "Times  Ne*  Ronrn  NPCI  !  02  00.02  or20/1212014"
       },
       "00": {
         "value": 2,
@@ -352,7 +313,7 @@
           0,
           0
         ],
-        "rawLine": "00  02  or  20  l:  :ola"
+        "rawLine": "T,D.r  N.q  Romd  \\PC  I  t  n?  00  02  or  20  l:  :ola"
       }
     },
     "f1": {

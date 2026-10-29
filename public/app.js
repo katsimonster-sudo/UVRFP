@@ -790,9 +790,9 @@ function updateApp3FromLiveData() {
         if (!d) return;
         if (code === '1070' || code === '1073') row[q] = d.opIncome || 0;
         else if (code === '1080' || code === '1086') row[q] = d.opCosts || 0;
-        else if (code === '1100') row[q] = d.opProfit || 0;
-        else if (code === '1200') row[q] = d.netProfit || 0;
-        else if (code === '1300') row[q] = d.ebitda || 0;
+        else if (code === '1100') row[q] = d.opProfit !== undefined ? d.opProfit : 0;
+        else if (code === '1170' || code === '1200') row[q] = d.netProfit !== undefined ? d.netProfit : 0;
+        else if (code === '1300') row[q] = d.ebitda !== undefined ? d.ebitda : 0;
         else if (code === '1400') row[q] = d.matCosts || 0;
         else if (code === '1401') row[q] = d.rawMat || 0;
         else if (code === '1402') row[q] = d.energyMat || 0;
@@ -807,9 +807,9 @@ function updateApp3FromLiveData() {
       if (dy) {
         if (code === '1070' || code === '1073') row.currentYear = dy.opIncome || 151072;
         else if (code === '1080' || code === '1086') row.currentYear = dy.opCosts || 167108;
-        else if (code === '1100') row.currentYear = dy.opProfit || -16036;
-        else if (code === '1200') row.currentYear = dy.netProfit || -14187;
-        else if (code === '1300') row.currentYear = dy.ebitda || -15478;
+        else if (code === '1100') row.currentYear = dy.opProfit !== undefined ? dy.opProfit : -16036;
+        else if (code === '1170' || code === '1200') row.currentYear = dy.netProfit !== undefined ? dy.netProfit : -14187;
+        else if (code === '1300') row.currentYear = dy.ebitda !== undefined ? dy.ebitda : -15478;
         else if (code === '1400') row.currentYear = dy.matCosts || 1466;
         else if (code === '1401') row.currentYear = dy.rawMat || 166;
         else if (code === '1402') row.currentYear = dy.energyMat || 1300;
@@ -1586,50 +1586,64 @@ async function autoLoadStoredPeriod() {
     const { periods } = await res.json();
     if (!periods || periods.length === 0) return;
 
-    // Find most recent period matching currentYear, prefer highest quarter
-    const yearPeriods = periods.filter(p => p.year === currentYear);
+    // Filter periods for currentYear and sort ascending Q1 -> Q2 -> Q3
+    const yearPeriods = periods.filter(p => p.year === currentYear).sort((a, b) => a.quarter - b.quarter);
     if (yearPeriods.length === 0) return;
-    const latest = yearPeriods.sort((a, b) => b.quarter - a.quarter)[0];
-    if (!latest) return;
 
-    const qKey = `q${latest.quarter}`;
-    const dataRes = await fetch(`/api/period/${latest.year}/${latest.quarter}`);
-    const data = await dataRes.json();
-    if (!data.suite) return;
+    // Reset Q4 to 0 if not present in periods
+    if (!yearPeriods.some(p => p.quarter === 4)) {
+      if (liveData.q4) {
+        Object.keys(liveData.q4).forEach(fk => {
+          if (typeof liveData.q4[fk] === 'object' && liveData.q4[fk] !== null) {
+            Object.keys(liveData.q4[fk]).forEach(k => {
+              if (typeof liveData.q4[fk][k] === 'number') liveData.q4[fk][k] = 0;
+            });
+          }
+        });
+      }
+    }
 
-    // 1. Cumulative (9-month) → liveData.year
-    if (data.suite.forms) {
-      Object.keys(data.suite.forms).forEach(fk => {
-        liveData.year[fk] = Object.assign({}, liveData.year[fk], data.suite.forms[fk]);
+    let latest = null;
+    for (const p of yearPeriods) {
+      latest = p;
+      const qKey = `q${p.quarter}`;
+      const dataRes = await fetch(`/api/period/${p.year}/${p.quarter}`);
+      const data = await dataRes.json();
+      if (!data.suite) continue;
+
+      // 1. Isolated quarterly delta → liveData[qKey]
+      const deltaF = data.suite.deltaForms || data.suite.forms;
+      if (deltaF) {
+        Object.keys(deltaF).forEach(fk => {
+          liveData[qKey][fk] = Object.assign({}, liveData[qKey][fk], deltaF[fk]);
+        });
+      }
+
+      // 2. Cumulative goes to liveData.year for the latest quarter
+      if (data.suite.forms) {
+        Object.keys(data.suite.forms).forEach(fk => {
+          liveData.year[fk] = Object.assign({}, liveData.year[fk], data.suite.forms[fk]);
+        });
+      }
+    }
+
+    if (latest) {
+      activeQuarter = `q${latest.quarter}`;
+      document.querySelectorAll('.qtr-header-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-qtr') === activeQuarter);
       });
+
+      updateApp3FromLiveData();
+      renderActiveTab();
+
+      const statusEl = document.getElementById('footerStatusText');
+      if (statusEl) {
+        statusEl.textContent = `✅ Дані 1, 2, 3 кв. ${latest.year} завантажено успішно.`;
+      }
+
+      await refreshPdfStatus();
+      await loadQuarterPdf(latest.quarter, false);
     }
-
-    // 2. Isolated quarterly delta → liveData[quarter]
-    const deltaF = data.suite.deltaForms || data.suite.forms;
-    if (deltaF) {
-      Object.keys(deltaF).forEach(fk => {
-        liveData[qKey][fk] = Object.assign({}, liveData[qKey][fk], deltaF[fk]);
-      });
-    }
-
-    // 3. Activate matching quarter button
-    activeQuarter = qKey;
-    document.querySelectorAll('.qtr-header-btn').forEach(b => {
-      b.classList.toggle('active', b.getAttribute('data-qtr') === activeQuarter);
-    });
-
-    // 4. Re-update App3 and render
-    updateApp3FromLiveData();
-    renderActiveTab();
-
-    const statusEl = document.getElementById('footerStatusText');
-    if (statusEl) {
-      statusEl.textContent = `✅ Дані ${latest.year} Q${latest.quarter} завантажено автоматично.`;
-    }
-
-    // 5. Refresh PDF status and load the PDF for the active quarter
-    await refreshPdfStatus();
-    await loadQuarterPdf(latest.quarter, false);
   } catch (err) {
     console.warn('Auto-load stored period failed:', err.message);
   }

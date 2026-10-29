@@ -91,7 +91,7 @@ app.get('/api/period/:year/:quarter', (req, res) => {
     q3: qNum >= 4 ? getPeriodData(year, 3) : null
   };
 
-  const suite = computeFinPlanSuite(rawData, priorData);
+  const suite = computeFinPlanSuite(rawData, priorData, qNum);
   res.json({ year: Number(year), quarter: qNum, suite });
 });
 
@@ -148,7 +148,7 @@ app.post('/api/upload-pdf', upload.single('pdfFile'), async (req, res) => {
     }
 
     const buffer = fs.readFileSync(req.file.path);
-    const parsed = await extractFinancialReport(buffer);
+    const parsed = await extractFinancialReport(buffer, { year, quarter });
 
     // Save parsed data to store
     savePeriodData(year, quarter, parsed.forms);
@@ -160,7 +160,7 @@ app.post('/api/upload-pdf', upload.single('pdfFile'), async (req, res) => {
       q3: quarter >= 4 ? getPeriodData(year, 3) : null
     };
 
-    const suite = computeFinPlanSuite(parsed.forms, priorData);
+    const suite = computeFinPlanSuite(parsed.forms, priorData, quarter);
 
     res.json({
       success: true,
@@ -190,14 +190,15 @@ app.post('/api/recalculate', (req, res) => {
 app.get('/api/export-excel/:year/:quarter', async (req, res) => {
   try {
     const { year, quarter } = req.params;
+    const qNum = Number(quarter) || 3;
     const rawData = getPeriodData(year, quarter) || {};
     const priorData = {
-      q1: getPeriodData(year, 1),
-      q2: getPeriodData(year, 2),
-      q3: getPeriodData(year, 3)
+      q1: qNum >= 2 ? getPeriodData(year, 1) : null,
+      q2: qNum >= 3 ? getPeriodData(year, 2) : null,
+      q3: qNum >= 4 ? getPeriodData(year, 3) : null
     };
 
-    const suite = computeFinPlanSuite(rawData, priorData);
+    const suite = computeFinPlanSuite(rawData, priorData, qNum);
     const buffer = await generateFinPlanWorkbook(suite);
 
     const filename = `Звіт_Викон_Фін_Пл_за_${quarter}_кв_${year}.xlsx`;
@@ -219,14 +220,15 @@ app.get('/api/app3-template', (req, res) => {
 app.get('/api/export-app3/:year/:quarter', async (req, res) => {
   try {
     const { year, quarter } = req.params;
+    const qNum = Number(quarter) || 3;
     const rawData = getPeriodData(year, quarter) || {};
     const priorData = {
-      q1: getPeriodData(year, 1),
-      q2: getPeriodData(year, 2),
-      q3: getPeriodData(year, 3)
+      q1: qNum >= 2 ? getPeriodData(year, 1) : null,
+      q2: qNum >= 3 ? getPeriodData(year, 2) : null,
+      q3: qNum >= 4 ? getPeriodData(year, 3) : null
     };
 
-    const suite = computeFinPlanSuite(rawData, priorData);
+    const suite = computeFinPlanSuite(rawData, priorData, qNum);
     const buffer = await generateApp3Workbook(suite);
 
     const filename = `Чернетка_Фін_Пл_за_${quarter}_кв_${year}.xlsx`;

@@ -1583,6 +1583,169 @@ if (exportApp3PdfBtn) {
   exportApp3PdfBtn.addEventListener('click', exportApp3ToPdf);
 }
 
+// Print / Vector PDF button (Неофіційний Додаток 3)
+const printApp3Btn = document.getElementById('printApp3Btn');
+if (printApp3Btn) {
+  printApp3Btn.addEventListener('click', printApp3Report);
+}
+
+function generateApp3FullHtmlReport() {
+  const formKeys = ['680', '681', '682', '683', '684', '688', '689', '6895'];
+  const quarterLabel = getQuarterLabel(activeQuarter);
+  let formsHtml = '';
+
+  for (let fIdx = 0; fIdx < formKeys.length; fIdx++) {
+    const fk = formKeys[fIdx];
+    const title = APP3_TITLES[fk] || `Форма ${fk}`;
+    const rawRows = app3Data[fk] || [];
+    const rows = cleanApp3Rows(rawRows);
+    const hasNotes = fk === '681';
+    const colCount = hasNotes ? 9 : 8;
+
+    let tbody = '';
+    rows.forEach(r => {
+      if (r.isHeader) {
+        tbody += `<tr style="background:#e2e8f0;font-weight:bold;page-break-inside:avoid;break-inside:avoid;"><td colspan="${colCount}" style="padding:4px 6px;border:1px solid #94a3b8;font-size:8.5pt;">${r.name}</td></tr>`;
+        return;
+      }
+      if (!r.code) return;
+
+      const code = String(r.code);
+      const isCoeff = ['5010','5011','5012','5013','5014','5015','5020','5021','5030','5031','5040'].includes(code);
+
+      const valPrior = getApp3Val(fk, code, 'priorYear', r.priorYear);
+      const valCurr = getApp3Val(fk, code, 'currentYear', r.currentYear);
+      const valQ1 = getApp3Val(fk, code, 'q1', r.q1);
+      const valQ2 = getApp3Val(fk, code, 'q2', r.q2);
+      const valQ3 = getApp3Val(fk, code, 'q3', r.q3);
+      const valQ4 = getApp3Val(fk, code, 'q4', r.q4);
+
+      const fmtVal = (v) => isCoeff ? (typeof v === 'number' ? v.toFixed(4) : v) : fmt(v);
+
+      tbody += `
+      <tr style="page-break-inside:avoid;break-inside:avoid;">
+        <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:left;">${r.name}</td>
+        <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:center;font-family:monospace;">${code}</td>
+        <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valPrior)}</td>
+        <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;font-weight:bold;">${fmtVal(valCurr)}</td>
+        <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valQ1)}</td>
+        <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valQ2)}</td>
+        <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valQ3)}</td>
+        <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valQ4)}</td>
+        ${hasNotes ? `<td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:7.5pt;color:#475569;">${r.notes || ''}</td>` : ''}
+      </tr>`;
+    });
+
+    const pageBreak = fIdx < formKeys.length - 1 ? 'page-break-after: always; break-after: page;' : '';
+
+    formsHtml += `
+    <div class="pdf-report-page html2pdf__page-break" style="${pageBreak} margin-bottom: 25px; padding: 15px; background: #fff; color: #000; font-family: 'Times New Roman', serif;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px;">
+        <div>
+          <div style="font-size:12pt;font-weight:bold;text-transform:uppercase;">${title}</div>
+          <div style="font-size:9pt;color:#333;">за ${currentYear} рік (звітний період: <strong>${quarterLabel}</strong>)</div>
+        </div>
+        <div style="text-align:right;font-size:8.5pt;">
+          <strong>Неофіційний Додаток 3</strong><br>Чернетка виконання фінплану
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:8pt;margin-bottom:8px;line-height:1.3;">
+        <div><strong>Підприємство:</strong> ${enterpriseInfo.name}</div>
+        <div><strong>ЄДРПОУ:</strong> ${enterpriseInfo.edrpou} | <strong>КОПФГ:</strong> ${enterpriseInfo.kopfh}</div>
+        <div><strong>Орган управління:</strong> Міненерго (СКОДУ ${enterpriseInfo.skodu})</div>
+        <div><strong>КВЕД:</strong> ${enterpriseInfo.kved} | <strong>Одиниця:</strong> ${enterpriseInfo.unit}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:4px;">
+        <thead style="display:table-header-group;">
+          <tr style="background:#f1f5f9;font-weight:bold;page-break-inside:avoid;break-inside:avoid;">
+            <th rowspan="2" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;width:320px;">Найменування показника</th>
+            <th rowspan="2" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;width:55px;text-align:center;">Код</th>
+            <th colspan="2" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;text-align:center;">Факт наростаючим підсумком</th>
+            <th colspan="4" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;text-align:center;">Квартали (план/факт)</th>
+            ${hasNotes ? '<th rowspan="2" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;width:120px;">Примітки</th>' : ''}
+          </tr>
+          <tr style="background:#f1f5f9;font-weight:bold;page-break-inside:avoid;break-inside:avoid;">
+            <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:75px;text-align:right;">минулий рік</th>
+            <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:80px;text-align:right;">поточний рік</th>
+            <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:70px;text-align:right;">I квартал</th>
+            <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:70px;text-align:right;">II квартал</th>
+            <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:70px;text-align:right;">III квартал</th>
+            <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:70px;text-align:right;">IV квартал</th>
+          </tr>
+          <tr style="background:#e2e8f0;font-size:7pt;text-align:center;color:#475569;page-break-inside:avoid;break-inside:avoid;">
+            <th style="border:1px solid #94a3b8;padding:2px;">1</th>
+            <th style="border:1px solid #94a3b8;padding:2px;">2</th>
+            <th style="border:1px solid #94a3b8;padding:2px;">3</th>
+            <th style="border:1px solid #94a3b8;padding:2px;">4</th>
+            <th style="border:1px solid #94a3b8;padding:2px;">5</th>
+            <th style="border:1px solid #94a3b8;padding:2px;">6</th>
+            <th style="border:1px solid #94a3b8;padding:2px;">7</th>
+            <th style="border:1px solid #94a3b8;padding:2px;">8</th>
+            ${hasNotes ? '<th style="border:1px solid #94a3b8;padding:2px;">9</th>' : ''}
+          </tr>
+        </thead>
+        <tbody>
+          ${tbody}
+        </tbody>
+      </table>
+    </div>`;
+  }
+  return formsHtml;
+}
+
+function printApp3Report() {
+  if (!app3Data) {
+    alert('Дані Додатку 3 ще завантажуються, зачекайте кілька секунд.');
+    return;
+  }
+  const filename = `Чернетка_Фінплану_Додаток_3_${currentYear}`;
+  const formsHtml = generateApp3FullHtmlReport();
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Браузер заблокував відкриття нового вікна. Будь ласка, дозвольте спливаючі вікна для цього сайту.');
+    return;
+  }
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="uk">
+    <head>
+      <title>${filename}</title>
+      <meta charset="utf-8">
+      <style>
+        @page { size: A4 landscape; margin: 8mm; }
+        @media print {
+          body { margin: 0; background: #fff; color: #000; font-family: 'Times New Roman', serif; }
+          .no-print { display: none !important; }
+          .pdf-report-page { page-break-after: always; break-after: page; }
+          tr { page-break-inside: avoid; break-inside: avoid; }
+          thead { display: table-header-group; }
+        }
+        body { margin: 15px auto; max-width: 1150px; background: #f8fafc; font-family: 'Times New Roman', serif; color: #000; }
+        .print-toolbar {
+          position: sticky; top: 0; background: #1e293b; color: #fff; padding: 10px 20px;
+          display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 20px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: sans-serif;
+        }
+        .print-btn {
+          background: #059669; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px;
+        }
+        .pdf-report-page { background: #fff; padding: 20px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-radius: 4px; }
+        table { border-collapse: collapse; width: 100%; }
+      </style>
+    </head>
+    <body>
+      <div class="print-toolbar no-print">
+        <div><strong>Попередній перегляд Додатку 3 (усі 8 форм)</strong> — Векторний друк / Зберегти як PDF</div>
+        <button class="print-btn" onclick="window.print()">🖨️ Друк / Зберегти як PDF (Ctrl+P)</button>
+      </div>
+      ${formsHtml}
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+}
+
 async function exportApp3ToPdf() {
   if (!app3Data) {
     alert('Дані Додатку 3 ще завантажуються, зачекайте кілька секунд.');
@@ -1597,155 +1760,83 @@ async function exportApp3ToPdf() {
   }
 
   try {
-    const formKeys = ['680', '681', '682', '683', '684', '688', '689', '6895'];
-    const quarterLabel = getQuarterLabel(activeQuarter);
-
-    // Build print HTML document across all forms of App 3
-    let formsHtml = '';
-
-    for (let fIdx = 0; fIdx < formKeys.length; fIdx++) {
-      const fk = formKeys[fIdx];
-      const title = APP3_TITLES[fk] || `Форма ${fk}`;
-      const rawRows = app3Data[fk] || [];
-      const rows = cleanApp3Rows(rawRows);
-      const hasNotes = fk === '681';
-      const colCount = hasNotes ? 9 : 8;
-
-      let tbody = '';
-      rows.forEach(r => {
-        if (r.isHeader) {
-          tbody += `<tr style="background:#e2e8f0;font-weight:bold;"><td colspan="${colCount}" style="padding:4px 6px;border:1px solid #94a3b8;font-size:8.5pt;">${r.name}</td></tr>`;
-          return;
-        }
-        if (!r.code) return;
-
-        const code = String(r.code);
-        const isCoeff = ['5010','5011','5012','5013','5014','5015','5020','5021','5030','5031','5040'].includes(code);
-
-        const valPrior = getApp3Val(fk, code, 'priorYear', r.priorYear);
-        const valCurr = getApp3Val(fk, code, 'currentYear', r.currentYear);
-        const valQ1 = getApp3Val(fk, code, 'q1', r.q1);
-        const valQ2 = getApp3Val(fk, code, 'q2', r.q2);
-        const valQ3 = getApp3Val(fk, code, 'q3', r.q3);
-        const valQ4 = getApp3Val(fk, code, 'q4', r.q4);
-
-        const fmtVal = (v) => isCoeff ? (typeof v === 'number' ? v.toFixed(4) : v) : fmt(v);
-
-        tbody += `
-        <tr>
-          <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:left;">${r.name}</td>
-          <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:center;font-family:monospace;">${code}</td>
-          <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valPrior)}</td>
-          <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;font-weight:bold;">${fmtVal(valCurr)}</td>
-          <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valQ1)}</td>
-          <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valQ2)}</td>
-          <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valQ3)}</td>
-          <td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:8pt;text-align:right;">${fmtVal(valQ4)}</td>
-          ${hasNotes ? `<td style="padding:3px 5px;border:1px solid #cbd5e1;font-size:7.5pt;color:#475569;">${r.notes || ''}</td>` : ''}
-        </tr>`;
-      });
-
-      const pageBreak = fIdx < formKeys.length - 1 ? 'page-break-after: always; break-after: page;' : '';
-
-      formsHtml += `
-      <div class="pdf-report-page" style="${pageBreak} margin-bottom: 25px; padding: 15px; background: #fff; color: #000; font-family: 'Times New Roman', serif;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px;">
-          <div>
-            <div style="font-size:12pt;font-weight:bold;text-transform:uppercase;">${title}</div>
-            <div style="font-size:9pt;color:#333;">за ${currentYear} рік (звітний період: <strong>${quarterLabel}</strong>)</div>
-          </div>
-          <div style="text-align:right;font-size:8.5pt;">
-            <strong>Неофіційний Додаток 3</strong><br>Чернетка виконання фінплану
-          </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:8pt;margin-bottom:8px;line-height:1.3;">
-          <div><strong>Підприємство:</strong> ${enterpriseInfo.name}</div>
-          <div><strong>ЄДРПОУ:</strong> ${enterpriseInfo.edrpou} | <strong>КОПФГ:</strong> ${enterpriseInfo.kopfh}</div>
-          <div><strong>Орган управління:</strong> Міненерго (СКОДУ ${enterpriseInfo.skodu})</div>
-          <div><strong>КВЕД:</strong> ${enterpriseInfo.kved} | <strong>Одиниця:</strong> ${enterpriseInfo.unit}</div>
-        </div>
-        <table style="width:100%;border-collapse:collapse;margin-top:4px;">
-          <thead>
-            <tr style="background:#f1f5f9;font-weight:bold;">
-              <th rowspan="2" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;width:320px;">Найменування показника</th>
-              <th rowspan="2" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;width:55px;text-align:center;">Код</th>
-              <th colspan="2" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;text-align:center;">Факт наростаючим підсумком</th>
-              <th colspan="4" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;text-align:center;">Квартали (план/факт)</th>
-              ${hasNotes ? '<th rowspan="2" style="border:1px solid #94a3b8;padding:4px;font-size:8pt;width:120px;">Примітки</th>' : ''}
-            </tr>
-            <tr style="background:#f1f5f9;font-weight:bold;">
-              <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:75px;text-align:right;">минулий рік</th>
-              <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:80px;text-align:right;">поточний рік</th>
-              <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:70px;text-align:right;">I квартал</th>
-              <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:70px;text-align:right;">II квартал</th>
-              <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:70px;text-align:right;">III квартал</th>
-              <th style="border:1px solid #94a3b8;padding:3px;font-size:7.5pt;width:70px;text-align:right;">IV квартал</th>
-            </tr>
-            <tr style="background:#e2e8f0;font-size:7pt;text-align:center;color:#475569;">
-              <th style="border:1px solid #94a3b8;padding:2px;">1</th>
-              <th style="border:1px solid #94a3b8;padding:2px;">2</th>
-              <th style="border:1px solid #94a3b8;padding:2px;">3</th>
-              <th style="border:1px solid #94a3b8;padding:2px;">4</th>
-              <th style="border:1px solid #94a3b8;padding:2px;">5</th>
-              <th style="border:1px solid #94a3b8;padding:2px;">6</th>
-              <th style="border:1px solid #94a3b8;padding:2px;">7</th>
-              <th style="border:1px solid #94a3b8;padding:2px;">8</th>
-              ${hasNotes ? '<th style="border:1px solid #94a3b8;padding:2px;">9</th>' : ''}
-            </tr>
-          </thead>
-          <tbody>
-            ${tbody}
-          </tbody>
-        </table>
-      </div>`;
-    }
-
     const filename = `Чернетка_Фінплану_Додаток_3_${currentYear}.pdf`;
+    const formsHtml = generateApp3FullHtmlReport();
+
+    // Create full-screen loading indicator
+    const loader = document.createElement('div');
+    loader.id = 'pdfExportLoader';
+    loader.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      z-index: 1000000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+    loader.innerHTML = `
+      <div style="font-size: 46px; margin-bottom: 16px;">⏳</div>
+      <div style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Формування єдиного PDF Додатку 3</div>
+      <div style="font-size: 14px; color: #94a3b8; margin-bottom: 20px;">Компіляція 8 форм (680, 681, 682, 683, 684, 688, 689, 6895)...</div>
+      <div style="font-size: 12px; color: #64748b;">Будь ласка, зачекайте, файл почне завантажуватись автоматично.</div>
+    `;
+    document.body.appendChild(loader);
 
     if (window.html2pdf) {
+      // Must be at (0, 0) with real width and normal display so html2canvas renders all text and tables
       const tempContainer = document.createElement('div');
-      tempContainer.style.position = 'fixed';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.top = '0';
-      tempContainer.style.width = '1120px';
+      tempContainer.id = 'pdfExportTempContainer';
+      tempContainer.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1120px;
+        background: #ffffff;
+        color: #000000;
+        z-index: 999999;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      `;
       tempContainer.innerHTML = formsHtml;
       document.body.appendChild(tempContainer);
+
+      const prevScrollY = window.scrollY;
+      const prevScrollX = window.scrollX;
+      window.scrollTo(0, 0);
 
       const opt = {
         margin: [6, 6, 6, 6],
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 1.5, useCORS: true, logging: false },
+        html2canvas: {
+          scale: 1.25,
+          useCORS: true,
+          logging: false,
+          scrollY: 0,
+          scrollX: 0,
+          windowWidth: 1150,
+          backgroundColor: '#ffffff'
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
         pagebreak: { mode: ['css', 'legacy'] }
       };
 
-      await window.html2pdf().set(opt).from(tempContainer).save();
-      document.body.removeChild(tempContainer);
+      try {
+        await window.html2pdf().set(opt).from(tempContainer).save();
+      } finally {
+        if (tempContainer.parentNode) tempContainer.parentNode.removeChild(tempContainer);
+        if (loader.parentNode) loader.parentNode.removeChild(loader);
+        window.scrollTo(prevScrollX, prevScrollY);
+      }
     } else {
-      // Fallback: open print window
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>${filename}</title>
-          <meta charset="utf-8">
-          <style>
-            @page { size: A4 landscape; margin: 8mm; }
-            body { margin: 0; font-family: 'Times New Roman', serif; }
-            table { border-collapse: collapse; }
-            .pdf-report-page { page-break-after: always; break-after: page; }
-          </style>
-        </head>
-        <body>
-          ${formsHtml}
-        </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => printWindow.print(), 500);
+      if (loader.parentNode) loader.parentNode.removeChild(loader);
+      printApp3Report();
     }
   } catch (err) {
     console.error('PDF export error:', err);

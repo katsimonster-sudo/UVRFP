@@ -105,24 +105,30 @@
       overflow: auto;
       flex: 1;
       background: #2e3440;
-      text-align: center;
-      padding: 16px;
       cursor: grab;
       user-select: none;
       -webkit-user-select: none;
+      position: relative;
     }
     #pdfCanvasWrap.is-panning {
       cursor: grabbing !important;
     }
+    #pdfCanvasContainer {
+      display: flex;
+      justify-content: safe center;
+      align-items: flex-start;
+      min-width: 100%;
+      min-height: 100%;
+      padding: 24px;
+      box-sizing: border-box;
+      width: max-content;
+    }
     #pdfCanvas {
-      display: inline-block;
-      margin: 0 auto;
+      display: block;
+      margin: 0;
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
       background: #fff;
-      cursor: grab;
-    }
-    #pdfCanvasWrap.is-panning #pdfCanvas {
-      cursor: grabbing !important;
+      flex-shrink: 0;
     }
 
     /* ---- PDF Quarter Switcher Bar ---- */
@@ -302,7 +308,7 @@
           </div>
         </div>
         <!-- Canvas after load -->
-        <div id="pdfCanvasWrap"><canvas id="pdfCanvas"></canvas></div>
+        <div id="pdfCanvasWrap"><div id="pdfCanvasContainer"><canvas id="pdfCanvas"></canvas></div></div>
       </div>
     </section>
 

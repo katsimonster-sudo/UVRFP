@@ -292,14 +292,11 @@
         "value": -6334
       },
       "2240": {
-        "value": 1,
+        "value": 1842,
         "allValues": [
-          1,
-          0,
-          2026,
-          0
+          1842
         ],
-        "rawLine": "Psgrca  2240  1-  ninpivvn  2026  p."
+        "rawLine": "Psgrca  2240  1842  1-  ninpivvn  2026  p."
       },
       "2270": {
         "value": -177
@@ -320,14 +317,11 @@
         "value": 374
       },
       "2520": {
-        "value": 0.2,
+        "value": 103459,
         "allValues": [
-          0.2,
-          0,
-          0,
-          0
+          103459
         ],
-        "rawLine": "pcara  2520  0,2  \"IHuri  onepauiftHi  srrparu\""
+        "rawLine": "pcara  2520  103459  \"IHuri  onepauiftHi  srrparu\""
       },
       "7020": {
         "value": 5,

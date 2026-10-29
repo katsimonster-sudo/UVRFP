@@ -242,8 +242,8 @@ app.get('/api/export-app3/:year/:quarter', async (req, res) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`FP 2025 Studio server running at http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`FP 2025 Studio server running at http://0.0.0.0:${PORT}`);
   });
 }
 

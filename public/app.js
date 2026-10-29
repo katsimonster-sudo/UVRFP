@@ -1233,8 +1233,28 @@ async function renderPdfPage(pageNum) {
 }
 
 function setZoom(newScale) {
-  pdfScale = Math.max(0.4, Math.min(3.5, Math.round(newScale * 100) / 100));
+  pdfScale = Math.max(0.4, Math.min(4.0, Math.round(newScale * 100) / 100));
   renderPdfPage(pdfCurrentPage);
+}
+
+function setZoomAtPoint(newScale, clientX, clientY) {
+  const wrap = document.getElementById('pdfCanvasWrap');
+  if (!wrap || !pdfDoc) return setZoom(newScale);
+
+  const rect = wrap.getBoundingClientRect();
+  const mouseX = clientX !== undefined ? (clientX - rect.left) : (wrap.clientWidth / 2);
+  const mouseY = clientY !== undefined ? (clientY - rect.top) : (wrap.clientHeight / 2);
+
+  const oldScale = pdfScale;
+  const contentX = (wrap.scrollLeft + mouseX) / oldScale;
+  const contentY = (wrap.scrollTop + mouseY) / oldScale;
+
+  pdfScale = Math.max(0.4, Math.min(4.0, Math.round(newScale * 100) / 100));
+
+  renderPdfPage(pdfCurrentPage).then(() => {
+    wrap.scrollLeft = (contentX * pdfScale) - mouseX;
+    wrap.scrollTop = (contentY * pdfScale) - mouseY;
+  });
 }
 
 async function loadPdf(buffer) {
@@ -1286,16 +1306,53 @@ document.getElementById('zoomFitBtn').addEventListener('click', async () => {
   }
 });
 
-const pdfViewerFrame = document.getElementById('pdfViewerFrame');
-if (pdfViewerFrame) {
-  pdfViewerFrame.addEventListener('wheel', (e) => {
-    if (e.ctrlKey) {
-      e.preventDefault();
-      const delta = e.deltaY < 0 ? 0.15 : -0.15;
-      setZoom(pdfScale + delta);
+// PDF Drag-to-Pan (Hand tool) and Wheel Zoom
+(function initPdfPanAndZoom() {
+  const wrap = document.getElementById('pdfCanvasWrap');
+  if (!wrap) return;
+
+  let isPanning = false;
+  let startX = 0;
+  let startY = 0;
+  let startScrollLeft = 0;
+  let startScrollTop = 0;
+
+  wrap.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return; // Only left click
+    isPanning = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startScrollLeft = wrap.scrollLeft;
+    startScrollTop = wrap.scrollTop;
+    wrap.classList.add('is-panning');
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    wrap.scrollLeft = startScrollLeft - dx;
+    wrap.scrollTop = startScrollTop - dy;
+  });
+
+  const stopPan = () => {
+    if (isPanning) {
+      isPanning = false;
+      wrap.classList.remove('is-panning');
     }
+  };
+
+  window.addEventListener('mouseup', stopPan);
+  wrap.addEventListener('mouseleave', stopPan);
+
+  // Wheel zoom with cursor centering
+  wrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.15 : -0.15;
+    setZoomAtPoint(pdfScale + delta, e.clientX, e.clientY);
   }, { passive: false });
-}
+})();
 
 // =====================================================
 //  PDF QUARTER MANAGEMENT & SWITCHING

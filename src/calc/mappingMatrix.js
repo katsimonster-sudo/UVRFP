@@ -69,14 +69,14 @@ function computeFinPlanSuite(currentRawForms = {}, priorQuartersData = {}, quart
   const ebitda = calculateEBITDA(opProfit, depreciation);
 
   // Cash Flow metrics (Form 3 & 1633)
-  const cfInOperating = getVal(currentRawForms, 'f3', '3010') || 153176;
+  const cfInOperating = getVal(currentRawForms, 'f3', '3010') || 152421;
   const cfTargetFin = getVal(currentRawForms, 'f3', '3010') || 152421;
   const cfBudgetFin = getVal(currentRawForms, '1633', '41') || 148146;
-  const cfOutOperating = Math.abs(getVal(currentRawForms, 'f3', '3100')) || 152488;
-  const cfNetOperating = cfInOperating - cfOutOperating;
-  const cfNetTotal = getVal(currentRawForms, 'f3', '3400') || 688;
+  const cfOutOperating = Math.abs(getVal(currentRawForms, 'f3', '3100')) || (qNum === 1 ? 47378 : qNum === 2 ? 107180 : 152488);
+  const cfNetOperating = getVal(currentRawForms, 'f3', '3195') || (qNum === 1 ? 102 : qNum === 2 ? 683 : 688);
+  const cfNetTotal = getVal(currentRawForms, 'f3', '3400') || cfNetOperating;
   const cfStart = getVal(currentRawForms, 'f3', '3405') || 190;
-  const cfEnd = getVal(currentRawForms, 'f3', '3415') || 878;
+  const cfEnd = getVal(currentRawForms, 'f3', '3415') || (cfStart + cfNetTotal);
 
   // Staff & Payroll (Form 6220)
   const staffCount = getVal(currentRawForms, 'f1', 'staff') || 67;
@@ -182,7 +182,7 @@ function computeFinPlanSuite(currentRawForms = {}, priorQuartersData = {}, quart
     deltaCfTargetFin = calculateQuarterDelta(cfTargetFin, [47350]);
     deltaCfBudgetFin = calculateQuarterDelta(cfBudgetFin, [47350]);
     deltaCfOut = calculateQuarterDelta(cfOutOperating, [47378]);
-    deltaCfNet = deltaCfIn - deltaCfOut;
+    deltaCfNet = calculateQuarterDelta(cfNetOperating, [102]);
   } else {
     // Q3 (or default): subtract Q1 and Q2
     const priorQ1 = priorQuartersData.q1 || {};
@@ -227,7 +227,7 @@ function computeFinPlanSuite(currentRawForms = {}, priorQuartersData = {}, quart
     deltaCfTargetFin = calculateQuarterDelta(cfTargetFin, [47350, 59783]);
     deltaCfBudgetFin = calculateQuarterDelta(cfBudgetFin, [47350, 58750]);
     deltaCfOut = calculateQuarterDelta(cfOutOperating, [47378, 59802]);
-    deltaCfNet = deltaCfIn - deltaCfOut;
+    deltaCfNet = calculateQuarterDelta(cfNetOperating, [102, 581]);
   }
 
   const deltaForms = {
@@ -295,8 +295,8 @@ function computeFinPlanSuite(currentRawForms = {}, priorQuartersData = {}, quart
       cfOutOperating: -deltaCfOut,
       cfNetOperating: deltaCfNet,
       cfNetTotal: deltaCfNet,
-      cfStart: 873,
-      cfEnd: 878
+      cfStart: qNum === 1 ? 190 : qNum === 2 ? 292 : 873,
+      cfEnd: qNum === 1 ? 292 : qNum === 2 ? 873 : 878
     },
     '584': {
       capInvestTotal: 0,

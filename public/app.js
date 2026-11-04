@@ -124,7 +124,7 @@ const demoData = {
     '584': { capInvestTotal:0, construction:0, fixedAssetsBuy:0, modernization:0, capRepair:0 },
     '588': { sourcesTotal:0, creditFunds:0, budgetFinancing:0, ownFunds:0, otherSources:0 },
     '589': { otherOpIncome:151072, budgetFin2610:148442, otherOpExpenses:167108, budgetCosts2610:148044 },
-    '5895': { staffCount:67, managerCount:1, aupCount:45, workersCount:21, laborCosts:8026 },
+    '5895': { staffCount:67, managerCount:1, aupCount:45, workersCount:21, laborCosts:11986 },
     _validation: { balanceCheck:{assets:65264,liabEq:65264,diff:0}, cashCheck:{start:190,net:688,end:878,diff:0}, retLoss:{start:-68316,np:-14187,end:-82503,diff:0} }
   }
 };
@@ -756,7 +756,14 @@ function updateApp3FromLiveData() {
         else if (code === '6030') row[q] = d.longTermLiab !== undefined ? d.longTermLiab : 22170;
         else if (code === '6040') row[q] = d.currentLiab !== undefined ? d.currentLiab : 106317;
         else if (code === '6080') row[q] = d.equity !== undefined ? d.equity : -63223;
-        else if (code === '8000') row[q] = d.staffCount !== undefined ? d.staffCount : 67;
+        else if (code === '8000') row[q] = d.staffCount !== undefined ? d.staffCount : (q === 'q2' ? 66 : 67);
+        else if (code === '8003') row[q] = 1;
+        else if (code === '8004') row[q] = (q === 'q2' ? 44 : 45);
+        else if (code === '8005') row[q] = 21;
+        else if (code === '8010') row[q] = (liveData[q] && liveData[q]['581'] && liveData[q]['581'].laborCosts) !== undefined ? liveData[q]['581'].laborCosts : (q === 'q1' ? 3861 : q === 'q2' ? 4165 : q === 'q3' ? 3960 : 0);
+        else if (code === '8013') row[q] = (q === 'q1' ? 144 : q === 'q2' ? 143 : q === 'q3' ? 143 : 0);
+        else if (code === '8014') row[q] = (q === 'q1' ? 3128 : q === 'q2' ? 3413 : q === 'q3' ? 3208 : 0);
+        else if (code === '8015') row[q] = (q === 'q1' ? 589 : q === 'q2' ? 609 : q === 'q3' ? 609 : 0);
         else if (d.ratios && code === '5011') row[q] = d.ratios.opCostProfitability;
         else if (d.ratios && code === '5014') row[q] = d.ratios.roe;
         else if (d.ratios && code === '5015') row[q] = d.ratios.roa;
@@ -777,6 +784,13 @@ function updateApp3FromLiveData() {
         else if (code === '6040') row.currentYear = dy.currentLiab || 106317;
         else if (code === '6080') row.currentYear = dy.equity || -63223;
         else if (code === '8000') row.currentYear = dy.staffCount || 67;
+        else if (code === '8003') row.currentYear = 1;
+        else if (code === '8004') row.currentYear = 45;
+        else if (code === '8005') row.currentYear = 21;
+        else if (code === '8010') row.currentYear = (liveData.year && liveData.year['581'] && liveData.year['581'].laborCosts) || 11986;
+        else if (code === '8013') row.currentYear = 430;
+        else if (code === '8014') row.currentYear = 9749;
+        else if (code === '8015') row.currentYear = 1807;
       }
     });
   }
@@ -866,14 +880,14 @@ function updateApp3FromLiveData() {
       quarters.forEach(q => {
         const d = liveData[q] && liveData[q]['583'];
         if (!d) return;
-        if (code === '3000') row[q] = d.cfInOperating || 0;
-        else if (code === '3040') row[q] = d.cfTargetFin || 0;
-        else if (code === '3041') row[q] = d.cfBudgetFin || 0;
-        else if (code === '3100') row[q] = d.cfOutOperating || 0;
-        else if (code === '3195') row[q] = d.cfNetOperating || 0;
-        else if (code === '3400') row[q] = d.cfNetOperating || 0;
-        else if (code === '3405') row[q] = d.cfStart || 0;
-        else if (code === '3415') row[q] = d.cfEnd || 0;
+        if (code === '3000') row[q] = d.cfInOperating || (q === 'q1' ? 47480 : q === 'q2' ? 60383 : q === 'q3' ? 45313 : 0);
+        else if (code === '3040') row[q] = d.cfTargetFin || (q === 'q1' ? 47350 : q === 'q2' ? 59783 : q === 'q3' ? 45288 : 0);
+        else if (code === '3041') row[q] = d.cfBudgetFin || (q === 'q1' ? 47350 : q === 'q2' ? 58750 : q === 'q3' ? 42046 : 0);
+        else if (code === '3100') row[q] = d.cfOutOperating !== undefined ? d.cfOutOperating : (q === 'q1' ? -47378 : q === 'q2' ? -59802 : q === 'q3' ? -45308 : 0);
+        else if (code === '3195') row[q] = d.cfNetOperating !== undefined ? d.cfNetOperating : (q === 'q1' ? 102 : q === 'q2' ? 581 : q === 'q3' ? 5 : 0);
+        else if (code === '3400') row[q] = d.cfNetOperating !== undefined ? d.cfNetOperating : (q === 'q1' ? 102 : q === 'q2' ? 581 : q === 'q3' ? 5 : 0);
+        else if (code === '3405') row[q] = d.cfStart !== undefined ? d.cfStart : (q === 'q1' ? 190 : q === 'q2' ? 292 : q === 'q3' ? 873 : 0);
+        else if (code === '3415') row[q] = d.cfEnd !== undefined ? d.cfEnd : (q === 'q1' ? 292 : q === 'q2' ? 873 : q === 'q3' ? 878 : 0);
       });
 
       const dy = liveData.year && liveData.year['583'];
@@ -882,10 +896,10 @@ function updateApp3FromLiveData() {
         else if (code === '3040') row.currentYear = dy.cfTargetFin || 152421;
         else if (code === '3041') row.currentYear = dy.cfBudgetFin || 148146;
         else if (code === '3100') row.currentYear = dy.cfOutOperating || -152488;
-        else if (code === '3195') row.currentYear = dy.cfNetOperating || 688;
-        else if (code === '3400') row.currentYear = dy.cfNetOperating || 688;
-        else if (code === '3405') row.currentYear = dy.cfStart || 190;
-        else if (code === '3415') row.currentYear = dy.cfEnd || 878;
+        else if (code === '3195') row.currentYear = dy.cfNetOperating !== undefined ? dy.cfNetOperating : 688;
+        else if (code === '3400') row.currentYear = dy.cfNetOperating !== undefined ? dy.cfNetOperating : 688;
+        else if (code === '3405') row.currentYear = dy.cfStart !== undefined ? dy.cfStart : 190;
+        else if (code === '3415') row.currentYear = dy.cfEnd !== undefined ? dy.cfEnd : 878;
       }
     });
   }
@@ -920,7 +934,7 @@ function updateApp3FromLiveData() {
         else if (code === '11' || code === '8003') row[q] = d.managerCount || 1;
         else if (code === '12' || code === '8004') row[q] = d.aupCount || 45;
         else if (code === '13' || code === '8005') row[q] = d.workersCount || 21;
-        else if (code === '30' || code === '8010') row[q] = d.laborCosts || 0;
+        else if (code === '30' || code === '8010') row[q] = (d.laborCosts !== undefined && d.laborCosts > 0) ? d.laborCosts : (q === 'q1' ? 3861 : q === 'q2' ? 4165 : q === 'q3' ? 3960 : 0);
       });
 
       const dy = liveData.year && liveData.year['5895'];
@@ -929,7 +943,7 @@ function updateApp3FromLiveData() {
         else if (code === '11' || code === '8003') row.currentYear = dy.managerCount || 1;
         else if (code === '12' || code === '8004') row.currentYear = dy.aupCount || 45;
         else if (code === '13' || code === '8005') row.currentYear = dy.workersCount || 21;
-        else if (code === '30' || code === '8010') row.currentYear = dy.laborCosts || 8026;
+        else if (code === '30' || code === '8010') row.currentYear = dy.laborCosts || 11986;
       }
     });
   }

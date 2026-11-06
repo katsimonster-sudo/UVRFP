@@ -1,17 +1,13 @@
 // =====================================================
 //  FP-2025 Studio — app.js
-//  Затверджений шаблон форм (Додаток 2) + Multi-column view
+//  Неофіційний Додаток 3 (форми 680–6895)
 // =====================================================
 
 // ---- State ----
 let currentYear = 2026;
-let currentTab = '580';
+let currentTab = '680';
 let activeQuarter = 'q3'; // 'q1' | 'q2' | 'q3' | 'q4' | 'year'
-let activeDocSet = 'app2'; // 'app2' (Офіційний Додаток 2) | 'app3' (Неофіційний Додаток 3)
 let app3Data = null;
-
-// activeMode: 'statutory' (Офіційний Додаток 2 / таблиця) | 'year' | 'q1' | 'q2' | 'q3' | 'q4'
-let activeMode = 'statutory';
 
 // Edits storage
 const userEdits = {};
@@ -27,7 +23,7 @@ let currentPdfQuarter = 3;
 let pdfsStatusCache = {};
 
 // =====================================================
-//  ENTERPRISE METADATA (Додаток 2)
+//  ENTERPRISE METADATA
 // =====================================================
 const enterpriseInfo = {
   name: 'ДП "ОК "Укрвуглереструктуризація"',
@@ -43,29 +39,6 @@ const enterpriseInfo = {
   phone: '+380 (44) 235-00-00',
   standards: 'П(с)БОУ',
   director: 'Керівник підприємства'
-};
-
-// =====================================================
-//  COLUMN DEFINITIONS FOR MULTI-QUARTER VIEW
-// =====================================================
-const MODES = {
-  year: ['q1','q2','q3','q4','year'],
-  q1:   ['q1','year'],
-  q2:   ['q1','q2','year'],
-  q3:   ['q1','q2','q3','year'],
-  q4:   ['q1','q2','q3','q4','year']
-};
-
-const COL_LABELS = {
-  q1:   '1 квартал',
-  q2:   '2 квартал',
-  q3:   '3 квартал',
-  q4:   '4 квартал (Δ)',
-  year: 'Рік (факт)'
-};
-
-const COL_CLASS = {
-  q1: 'col-q1', q2: 'col-q2', q3: 'col-q3', q4: 'col-q4', year: 'col-year'
 };
 
 // =====================================================
@@ -148,174 +121,9 @@ function getVal(period, formKey, field) {
     ? liveData[period][formKey][field] : 0;
 }
 
-function getRatio(period, field) {
-  const key = period + '|580r|' + field;
-  if (userEdits[key] !== undefined) return userEdits[key];
-  const r = liveData[period] && liveData[period]['580'] && liveData[period]['580'].ratios;
-  return r ? (r[field] !== undefined ? r[field] : 0) : 0;
-}
-
 function getQuarterLabel(q) {
   const map = { q1: 'I квартал', q2: 'II квартал', q3: 'III квартал', q4: 'IV квартал', year: 'Рік' };
   return map[q] || q;
-}
-
-// =====================================================
-//  BUILD STATUTORY HEADER HTML (Додаток 2)
-// =====================================================
-function buildStatutoryBannerHtml(titleText) {
-  return `
-  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:12px;font-size:0.82rem;line-height:1.4;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-      <div>
-        <div style="font-weight:700;font-size:1rem;color:var(--text-main);">${titleText}</div>
-        <div style="color:var(--text-muted);">за ${currentYear} рік (звітний період: <strong style="color:var(--primary);">${getQuarterLabel(activeQuarter)}</strong>)</div>
-      </div>
-      <div style="text-align:right;font-size:0.75rem;color:var(--text-muted);">
-        <strong>Додаток 2</strong><br>до Методичних рекомендацій
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:6px;border-top:1px solid var(--border);padding-top:8px;font-size:0.78rem;">
-      <div><strong>Підприємство:</strong> ${enterpriseInfo.name}</div>
-      <div><strong>ЄДРПОУ:</strong> <span style="font-family:monospace;font-weight:700;">${enterpriseInfo.edrpou}</span> | <strong>КОПФГ:</strong> ${enterpriseInfo.kopfh}</div>
-      <div><strong>Орган управління:</strong> Міненерго (СКОДУ ${enterpriseInfo.skodu})</div>
-      <div><strong>КВЕД:</strong> ${enterpriseInfo.kved} | <strong>Одиниця:</strong> ${enterpriseInfo.unit}</div>
-    </div>
-  </div>`;
-}
-
-// =====================================================
-//  BUILD STATUTORY 8/9-COLUMN TABLE
-// =====================================================
-function buildStatutoryTable(titleText, rowsDefinition, options = {}) {
-  const hasNotes = options.hasNotes;
-  const colCount = hasNotes ? 9 : 8;
-
-  let thead = `
-  <thead>
-    <tr>
-      <th rowspan="2" style="width:380px;">Найменування показника</th>
-      <th rowspan="2" style="width:70px;text-align:center;">Код рядка</th>
-      <th colspan="2" style="text-align:center;">Факт наростаючим підсумком</th>
-      <th colspan="4" style="text-align:center;">Звітний період (${getQuarterLabel(activeQuarter)})</th>
-      ${hasNotes ? '<th rowspan="2" style="min-width:200px;">Пояснення та обґрунтування відхилення</th>' : ''}
-    </tr>
-    <tr>
-      <th style="width:110px;text-align:right;">минулий рік</th>
-      <th style="width:120px;text-align:right;">поточний рік</th>
-      <th style="width:110px;text-align:right;">план</th>
-      <th style="width:110px;text-align:right;">факт</th>
-      <th style="width:110px;text-align:right;">відхилення, +/–</th>
-      <th style="width:90px;text-align:right;">виконання, %</th>
-    </tr>
-    <tr style="background:var(--bg-sidebar);color:var(--text-muted);font-size:0.72rem;text-align:center;">
-      <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th>
-      ${hasNotes ? '<th>9</th>' : ''}
-    </tr>
-  </thead>`;
-
-  let tbody = '<tbody>';
-
-  rowsDefinition.forEach(r => {
-    if (r.isHeader) {
-      tbody += `<tr class="header-row" style="background:rgba(59,130,246,0.12);font-weight:bold;"><td colspan="${colCount}">${r.name}</td></tr>`;
-      return;
-    }
-    if (r.isSubHeader) {
-      tbody += `<tr style="background:rgba(255,255,255,0.03);font-style:italic;font-weight:600;"><td colspan="${colCount}">${r.name}</td></tr>`;
-      return;
-    }
-
-    const formKey = r.formKey || currentTab;
-    const field = r.field || '';
-
-    // Data values
-    const priorYear = getVal('year', formKey, field + '_prior') || 0;
-    const currYearCumulative = getVal('year', formKey, field);
-    const planKey = activeQuarter + '|' + formKey + '|' + field + '_plan';
-    const planVal = userEdits[planKey] !== undefined ? userEdits[planKey] : (r.planDefault || 0);
-    const factVal = getVal(activeQuarter, formKey, field);
-
-    // Deviation & Execution %
-    const diff = factVal - planVal;
-    let pctStr = '—';
-    if (planVal !== 0) {
-      const pct = Math.round((factVal / planVal) * 1000) / 10;
-      pctStr = pct + '%';
-    }
-
-    const planId = `plan_${activeQuarter}_${formKey}_${field}`;
-    const factId = `fact_${activeQuarter}_${formKey}_${field}`;
-
-    tbody += `
-    <tr>
-      <td style="${r.isBold ? 'font-weight:700;' : ''}">${r.name}</td>
-      <td style="text-align:center;color:var(--text-muted);font-family:monospace;">${r.code || ''}</td>
-      <td class="num" style="text-align:right;color:var(--text-muted);">${fmt(priorYear)}</td>
-      <td class="num" style="text-align:right;font-weight:600;">${fmt(currYearCumulative)}</td>
-      <td class="num editable-cell" id="${planId}" style="text-align:right;background:rgba(255,255,255,0.02);" data-period="${activeQuarter}" data-form="${formKey}" data-field="${field}_plan">${fmt(planVal)}</td>
-      <td class="num editable-cell" id="${factId}" style="text-align:right;font-weight:600;${factVal < 0 ? 'color:var(--danger)' : ''}" data-period="${activeQuarter}" data-form="${formKey}" data-field="${field}">${fmt(factVal)}</td>
-      <td class="num" style="text-align:right;${diff < 0 ? 'color:var(--danger)' : 'color:var(--success)'};">${diff !== 0 ? fmt(diff) : '0'}</td>
-      <td class="num" style="text-align:right;font-weight:600;">${pctStr}</td>
-      ${hasNotes ? `<td style="color:var(--text-muted);font-size:0.75rem;">${r.notes || ''}</td>` : ''}
-    </tr>`;
-  });
-
-  tbody += '</tbody>';
-
-  return `
-  ${buildStatutoryBannerHtml(titleText)}
-  <table class="fin-table">
-    ${thead}
-    ${tbody}
-  </table>`;
-}
-
-// =====================================================
-//  MULTI-QUARTER COMPARISON BUILDER
-// =====================================================
-function getCols() { return MODES[activeMode] || MODES.year; }
-
-function buildComparisonHead(label1, extraCols) {
-  const code = extraCols ? `<th style="width:60px">Код</th>` : '';
-  const dataCols = getCols().map(c =>
-    `<th class="${COL_CLASS[c]}" style="text-align:right;min-width:110px">${COL_LABELS[c]}</th>`
-  ).join('');
-  return `<thead><tr><th>${label1}</th>${code}${dataCols}</tr></thead>`;
-}
-
-function buildComparisonRow(label, code, formKey, field, opts = {}) {
-  const cols = getCols();
-  const isNeg = opts.alwaysRed;
-  const isBold = opts.bold;
-  const codeCell = `<td style="width:60px;text-align:center;color:var(--text-muted)">${code}</td>`;
-
-  const dataCells = cols.map(period => {
-    const val = getVal(period, formKey, field);
-    const red = isNeg || val < 0;
-    const style = `text-align:right;${red?'color:var(--danger)':''}`;
-    const id = `c_${period}_${formKey}_${field}`;
-    const content = isBold ? `<strong>${fmt(val)}</strong>` : fmt(val);
-    return `<td class="num ${COL_CLASS[period]} editable-cell" id="${id}" style="${style}" data-period="${period}" data-form="${formKey}" data-field="${field}">${content}</td>`;
-  }).join('');
-
-  return `<tr><td${isBold?' style="font-weight:600"':''}>${label}</td>${codeCell}${dataCells}</tr>`;
-}
-
-function buildComparisonRatioRow(label, code, field) {
-  const cols = getCols();
-  const codeCell = `<td style="width:60px;text-align:center;color:var(--text-muted)">${code}</td>`;
-  const dataCells = cols.map(period => {
-    const val = getRatio(period, field);
-    const red = val < 0;
-    return `<td class="num ${COL_CLASS[period]}" style="text-align:right;${red?'color:var(--danger)':''}">${val}</td>`;
-  }).join('');
-  return `<tr><td>${label}</td>${codeCell}${dataCells}</tr>`;
-}
-
-function buildComparisonSectionRow(label) {
-  const span = getCols().length + 2;
-  return `<tr class="header-row" style="background:rgba(59,130,246,0.12);font-weight:bold;"><td colspan="${span}">${label}</td></tr>`;
 }
 
 // =====================================================
@@ -324,368 +132,11 @@ function buildComparisonSectionRow(label) {
 function renderActiveTab() {
   const container = document.getElementById('tabContentArea');
   if (!container) return;
-
-  // --- НЕОФІЦІЙНИЙ ДОДАТОК 3 (форми 680-6895) ---
-  if (activeDocSet === 'app3') {
-    if (currentTab === 'check3') {
-      renderCheck3Tab(container);
-    } else {
-      renderApp3FormTab(container, currentTab);
-    }
-    return;
-  }
-
-  // --- STATUTORY MODE (Офіційний Додаток 2) ---
-  if (activeMode === 'statutory') {
-    if (currentTab === '580') {
-      const rows580 = [
-        { isHeader: true, name: 'І. Формування фінансових результатів' },
-        { code: '1000', name: 'Чистий дохід від реалізації продукції (товарів, робіт, послуг)', field: 'netRevenue' },
-        { code: '1010', name: 'Собівартість реалізованої продукції (товарів, робіт, послуг)', field: 'costOfGoods' },
-        { code: '1020', name: 'Валовий прибуток/збиток', field: 'grossProfit' },
-        { code: '1300', name: 'EBITDA', field: 'ebitda', isBold: true },
-        { code: '1200', name: 'Чистий фінансовий результат', field: 'netProfit', isBold: true },
-
-        { isHeader: true, name: 'ІІ. Сплата податків, зборів та інших обов\'язкових платежів' },
-        { code: '2111', name: 'податок на прибуток підприємств', field: 'incomeTax' },
-        { code: '2112', name: 'податок на додану вартість (до сплати)', field: 'vatPaid' },
-        { code: '2113', name: 'податок на додану вартість (до відшкодування)', field: 'vatRefund' },
-        { code: '2131', name: 'відрахування частини чистого прибутку унітарними підприємствами', field: 'stateDivUnitary' },
-        { code: '2132', name: 'відрахування частини чистого прибутку на виплату дивідендів', field: 'stateDivJointStock' },
-        { code: '2200', name: 'Усього виплат на користь держави', field: 'totalStatePayments', isBold: true },
-
-        { isHeader: true, name: 'ІІІ. Капітальні інвестиції' },
-        { code: '4000', name: 'Капітальні інвестиції', field: 'capInvestTotal' },
-
-        { isHeader: true, name: 'ІV. Коефіцієнтний аналіз' },
-        { isSubHeader: true, name: 'Коефіцієнти рентабельності' },
-        { code: '5010', name: 'Коефіцієнт рентабельності діяльності (р. 1200 / р. 1000)', field: 'profitabilityActivity' },
-        { code: '5011', name: 'Коефіцієнт рентабельності операційних витрат', field: 'opCostProfitability' },
-        { code: '5013', name: 'Коефіцієнт рентабельності EBITDA (р. 1300 / р. 1000)', field: 'ebitdaMargin' },
-        { code: '5014', name: 'Коефіцієнт рентабельності власного капіталу (ROE)', field: 'roe' },
-        { code: '5015', name: 'Коефіцієнт рентабельності активів (ROA)', field: 'roa' },
-
-        { isSubHeader: true, name: 'Коефіцієнти платоспроможності' },
-        { code: '5020', name: 'Коефіцієнт фінансової стійкості', field: 'financialStability' },
-        { code: '5030', name: 'Коефіцієнт поточної ліквідності', field: 'currentLiquidity' },
-
-        { isHeader: true, name: 'V. Звіт про фінансовий стан' },
-        { code: '6000', name: 'Необоротні активи, усього', field: 'nonCurrentAssets' },
-        { code: '6010', name: 'Оборотні активи, усього', field: 'currentAssets' },
-        { code: '6020', name: 'Усього активи', field: 'totalAssets', isBold: true },
-        { code: '6030', name: 'Довгострокові зобов\'язання і забезпечення', field: 'longTermLiab' },
-        { code: '6040', name: 'Поточні зобов\'язання і забезпечення', field: 'currentLiab' },
-        { code: '6080', name: 'Власний капітал', field: 'equity', isBold: true },
-
-        { isHeader: true, name: 'VII. Дані про персонал та оплату праці' },
-        { code: '8000', name: 'Середня кількість штатних працівників', field: 'staffCount' },
-        { code: '8010', name: 'Витрати на оплату праці', field: 'laborCosts' }
-      ];
-      container.innerHTML = buildStatutoryTable('ЗВІТ про виконання фінансового плану (Основні фінансові показники)', rows580);
-
-    } else if (currentTab === '581') {
-      const rows581 = [
-        { isHeader: true, name: 'Доходи і витрати (деталізація)' },
-        { code: '1000', name: 'Чистий дохід від реалізації продукції (товарів, робіт, послуг)', field: 'netRevenue' },
-        { code: '1010', name: 'Собівартість реалізованої продукції (товарів, робіт, послуг)', field: 'costOfGoods' },
-        { code: '1070', name: 'Інші операційні доходи, усього', field: 'opIncome' },
-        { code: '1073', name: 'інші операційні доходи (розшифрувати)', field: 'opIncome' },
-        { code: '1080', name: 'Інші операційні витрати, усього', field: 'opCosts' },
-        { code: '1086', name: 'інші операційні витрати (розшифрувати)', field: 'opCosts' },
-        { code: '1100', name: 'Фінансовий результат від операційної діяльності', field: 'opProfit', isBold: true },
-        { code: '1200', name: 'Чистий фінансовий результат (збиток)', field: 'netProfit', isBold: true },
-        { code: '1300', name: 'EBITDA (р. 1100 + амортизація р. 1430)', field: 'ebitda', isBold: true },
-
-        { isHeader: true, name: 'Елементи операційних витрат' },
-        { code: '1400', name: 'Матеріальні витрати, у тому числі:', field: 'matCosts' },
-        { code: '1401', name: 'витрати на сировину та основні матеріали', field: 'rawMat' },
-        { code: '1402', name: 'витрати на паливо та енергію', field: 'energyMat' },
-        { code: '1410', name: 'Витрати на оплату праці', field: 'laborCosts' },
-        { code: '1420', name: 'Відрахування на соціальні заходи', field: 'socialCosts' },
-        { code: '1430', name: 'Амортизація', field: 'depreciation' },
-        { code: '1440', name: 'Інші операційні витрати', field: 'otherOpCosts' },
-        { code: '1450', name: 'Усього елементів', field: 'totalElements', isBold: true }
-      ];
-      container.innerHTML = buildStatutoryTable('3. Формування фінансових результатів', rows581, { hasNotes: true });
-
-    } else if (currentTab === '582') {
-      const rows582 = [
-        { isHeader: true, name: 'Розподіл чистого прибутку' },
-        { code: '1200', name: 'Чистий фінансовий результат', field: 'netProfit' },
-        { code: '2000', name: 'Залишок нерозподіленого прибутку (непокритого збитку) на початок періоду', field: 'retainedLossStart' },
-        { code: '2009', name: 'Скоригований залишок на початок періоду', field: 'retainedLossStart' },
-        { code: '2070', name: 'Залишок нерозподіленого прибутку (непокритого збитку) на кінець періоду', field: 'retainedLossEnd', isBold: true },
-
-        { isHeader: true, name: 'Сплата податків, зборів та інших обов\'язкових платежів' },
-        { code: '2110', name: 'Сплата податків та зборів до Державного бюджету України, усього:', field: 'totalTaxesPaid', isBold: true },
-        { code: '2111', name: 'податок на прибуток підприємств', field: 'incomeTax' },
-        { code: '2112', name: 'ПДВ, що підлягає сплаті до бюджету', field: 'vatPaid' },
-        { code: '2117', name: 'податок на доходи фізичних осіб (ПДФО)', field: 'pdfoPaid' },
-        { code: '2118', name: 'інші податки та збори', field: 'otherTaxesPaid' },
-        { code: '2130', name: 'Інші платежі на користь держави (ЄСВ)', field: 'esvPaid' },
-        { code: '2200', name: 'Усього виплат на користь держави', field: 'totalStatePayments', isBold: true }
-      ];
-      container.innerHTML = buildStatutoryTable('II. Розрахунки з бюджетом', rows582);
-
-    } else if (currentTab === '583') {
-      const rows583 = [
-        { isHeader: true, name: 'І. Рух коштів у результаті операційної діяльності' },
-        { code: '3000', name: 'Надходження грошових коштів від операційної діяльності', field: 'cfInOperating', isBold: true },
-        { code: '3010', name: 'Виручка від реалізації продукції', field: 'cfRevGoods' },
-        { code: '3040', name: 'Цільове фінансування, у тому числі:', field: 'cfTargetFin' },
-        { code: '3041', name: 'бюджетне фінансування', field: 'cfBudgetFin' },
-        { code: '3100', name: 'Витрачання грошових коштів від операційної діяльності', field: 'cfOutOperating', isBold: true },
-        { code: '3110', name: 'Розрахунки за продукцію (товари, роботи та послуги)', field: 'cfOutGoods' },
-        { code: '3120', name: 'Розрахунки з оплати праці', field: 'cfOutLabor' },
-        { code: '3130', name: 'Відрахування на соціальні заходи', field: 'cfOutSocial' },
-        { code: '3150', name: 'Зобов’язання з податків, зборів та платежів', field: 'cfOutTaxes' },
-        { code: '3195', name: 'Чистий рух коштів від операційної діяльності', field: 'cfNetOperating', isBold: true },
-
-        { isHeader: true, name: 'Підсумок руху коштів' },
-        { code: '3400', name: 'Чистий рух грошових коштів за звітний період', field: 'cfNetTotal', isBold: true },
-        { code: '3405', name: 'Залишок коштів на початок періоду', field: 'cfStart' },
-        { code: '3415', name: 'Залишок коштів на кінець періоду', field: 'cfEnd', isBold: true }
-      ];
-      container.innerHTML = buildStatutoryTable('ІІІ. Рух грошових коштів (за прямим методом)', rows583);
-
-    } else if (currentTab === '584') {
-      const rows584 = [
-        { code: '4000', name: 'Капітальні інвестиції, усього, у тому числі:', field: 'capInvestTotal', isBold: true },
-        { code: '4010', name: 'капітальне будівництво', field: 'construction' },
-        { code: '4020', name: 'придбання (виготовлення) основних засобів', field: 'fixedAssetsBuy' },
-        { code: '4030', name: 'придбання (виготовлення) інших необоротних матеріальних активів', field: 'otherMaterialBuy' },
-        { code: '4040', name: 'придбання (створення) нематеріальних активів', field: 'intangibleBuy' },
-        { code: '4050', name: 'модернізація, модифікація основних засобів', field: 'modernization' },
-        { code: '4060', name: 'капітальний ремонт', field: 'capRepair' }
-      ];
-      container.innerHTML = buildStatutoryTable('IV. Капітальні інвестиції', rows584);
-
-    } else if (currentTab === '588') {
-      const rows588 = [
-        { code: '10', name: 'Усього джерел капітальних інвестицій:', field: 'sourcesTotal', isBold: true },
-        { code: '20', name: 'залучення кредитних коштів', field: 'creditFunds' },
-        { code: '30', name: 'бюджетне фінансування', field: 'budgetFinancing' },
-        { code: '40', name: 'власні кошти (розшифрувати)', field: 'ownFunds' },
-        { code: '50', name: 'інші джерела (розшифрувати)', field: 'otherSources' },
-        { code: '60', name: 'у тому числі амортизація', field: 'depreciationSource' }
-      ];
-      container.innerHTML = buildStatutoryTable('VІ. Джерела капітальних інвестицій (тис. грн без ПДВ)', rows588);
-
-    } else if (currentTab === '589') {
-      const rows589 = [
-        { isHeader: true, name: '2. Інформація про бізнес підприємства (код рядка 1000 звіту)' },
-        { code: '1000', name: 'Добування кам\'яного вугілля (КВЕД 05.10)', field: 'netRevenue' },
-        { isHeader: true, name: 'Бюджетні програми та ліквідація шахт' },
-        { code: '1073', name: 'Інші операційні доходи: бюджетне фінансування КЕКВ 2610', field: 'budgetFin2610' },
-        { code: '1086', name: 'Інші операційні витрати: витрати за рахунок КЕКВ 2610', field: 'budgetCosts2610' }
-      ];
-      container.innerHTML = buildStatutoryTable('2. Інформація про бізнес підприємства (код рядка 1000 звіту)', rows589);
-
-    } else if (currentTab === '5895') {
-      const rows5895 = [
-        { isHeader: true, name: 'VII. Дані про персонал та витрати на оплату праці' },
-        { code: '8000', name: 'Середня кількість працівників, у тому числі:', field: 'staffCount', isBold: true },
-        { code: '8003', name: 'керівник', field: 'managerCount' },
-        { code: '8004', name: 'адміністративно-управлінський персонал', field: 'aupCount' },
-        { code: '8005', name: 'працівники (робітники)', field: 'workersCount' },
-        { code: '8010', name: 'Витрати на оплату праці, у тому числі:', field: 'laborCosts', isBold: true },
-        { code: '8013', name: 'керівник', field: 'managerSalary' },
-        { code: '8014', name: 'адміністративно-управлінський персонал', field: 'aupSalary' },
-        { code: '8015', name: 'працівники', field: 'workersSalary' },
-        { code: '8020', name: 'Середньомісячні витрати на одного працівника (грн)', field: 'avgWageTotal' }
-      ];
-      container.innerHTML = buildStatutoryTable('VII. Дані про персонал та витрати на оплату праці', rows5895);
-
-    } else if (currentTab === 'raw') {
-      renderRawTab(container);
-    } else if (currentTab === 'check') {
-      renderCheckTab(container);
-    }
-
-  // --- MULTI-QUARTER COMPARISON MODE (Рік, Q1, Q2, Q3, Q4) ---
+  if (currentTab === 'check3') {
+    renderCheck3Tab(container);
   } else {
-    if (currentTab === '580') {
-      container.innerHTML = `<table class="fin-table">
-        ${buildComparisonHead('Показник форми 580', true)}
-        <tbody>
-          ${buildComparisonSectionRow('I. Формування фінансових результатів')}
-          ${buildComparisonRow('EBITDA', '1300', '580', 'ebitda')}
-          ${buildComparisonRow('Чистий фінансовий результат', '1200', '580', 'netProfit')}
-          ${buildComparisonSectionRow('IV. Коефіцієнтний аналіз')}
-          ${buildComparisonRatioRow('Рентабельність операційних витрат', '5011', 'opCostProfitability')}
-          ${buildComparisonRatioRow('Рентабельність власного капіталу (ROE)', '5014', 'roe')}
-          ${buildComparisonRatioRow('Рентабельність активів (ROA)', '5015', 'roa')}
-          ${buildComparisonRatioRow('Коефіцієнт фінансової стійкості', '5020', 'financialStability')}
-          ${buildComparisonRatioRow('Коефіцієнт поточної ліквідності', '5030', 'currentLiquidity')}
-          ${buildComparisonSectionRow('V. Звіт про фінансовий стан (Баланс)')}
-          ${buildComparisonRow('Необоротні активи, усього', '6000', '580', 'nonCurrentAssets')}
-          ${buildComparisonRow('Оборотні активи, усього', '6010', '580', 'currentAssets')}
-          ${buildComparisonRow('Усього активи (Баланс)', '6020', '580', 'totalAssets', {bold:true})}
-          ${buildComparisonRow("Довгострокові зобов'язання", '6030', '580', 'longTermLiab')}
-          ${buildComparisonRow('Поточні зобов\'язання', '6040', '580', 'currentLiab')}
-          ${buildComparisonRow('Власний капітал', '6080', '580', 'equity', {bold:true})}
-        </tbody>
-      </table>`;
-    } else if (currentTab === '581') {
-      container.innerHTML = `<table class="fin-table">
-        ${buildComparisonHead('Показник форми 581', true)}
-        <tbody>
-          ${buildComparisonRow('Інші операційні доходи', '1070', '581', 'opIncome')}
-          ${buildComparisonRow('Інші операційні витрати', '1080', '581', 'opCosts')}
-          ${buildComparisonRow('Фінрезультат від операційної діяльності', '1100', '581', 'opProfit')}
-          ${buildComparisonRow('Чистий збиток', '1200', '581', 'netProfit')}
-          ${buildComparisonRow('EBITDA', '1300', '581', 'ebitda', {bold:true})}
-          ${buildComparisonSectionRow('Елементи операційних витрат')}
-          ${buildComparisonRow('Матеріальні витрати', '1400', '581', 'matCosts')}
-          ${buildComparisonRow('- сировина та матеріали', '1401', '581', 'rawMat')}
-          ${buildComparisonRow('- паливо та енергія', '1402', '581', 'energyMat')}
-          ${buildComparisonRow('Витрати на оплату праці', '1410', '581', 'laborCosts')}
-          ${buildComparisonRow('Відрахування на соціальні заходи', '1420', '581', 'socialCosts')}
-          ${buildComparisonRow('Амортизація', '1430', '581', 'depreciation')}
-          ${buildComparisonRow('Інші операційні витрати', '1440', '581', 'otherOpCosts')}
-          ${buildComparisonRow('Усього елементів', '1450', '581', 'totalElements', {bold:true})}
-        </tbody>
-      </table>`;
-    } else if (currentTab === '582') {
-      container.innerHTML = `<table class="fin-table">
-        ${buildComparisonHead('Показник форми 582', true)}
-        <tbody>
-          ${buildComparisonSectionRow('Розподіл чистого прибутку')}
-          ${buildComparisonRow('Чистий фінансовий результат', '1200', '582', 'netProfit')}
-          ${buildComparisonRow('Залишок збитку на початок періоду', '2000', '582', 'retainedLossStart')}
-          ${buildComparisonRow('Скоригований залишок на початок періоду', '2009', '582', 'retainedLossStart')}
-          ${buildComparisonRow('Залишок збитку на кінець періоду', '2070', '582', 'retainedLossEnd', {bold:true})}
-          ${buildComparisonSectionRow('Сплата податків та зборів')}
-          ${buildComparisonRow('Сплата до Держбюджету, усього', '2110', '582', 'totalTaxesPaid', {bold:true})}
-          ${buildComparisonRow('податок на додану вартість (ПДВ)', '2112', '582', 'vatPaid')}
-          ${buildComparisonRow('податок на доходи фізичних осіб (ПДФО)', '2117', '582', 'pdfoPaid')}
-          ${buildComparisonRow('інші податки та збори', '2118', '582', 'otherTaxesPaid')}
-          ${buildComparisonRow('Інші платежі на користь держави (ЄСВ)', '2130', '582', 'esvPaid')}
-          ${buildComparisonRow('Усього виплат на користь держави', '2200', '582', 'totalStatePayments', {bold:true})}
-        </tbody>
-      </table>`;
-    } else if (currentTab === '583') {
-      container.innerHTML = `<table class="fin-table">
-        ${buildComparisonHead('Показник форми 583', true)}
-        <tbody>
-          ${buildComparisonRow('Надходження від операційної діяльності', '3000', '583', 'cfInOperating', {bold:true})}
-          ${buildComparisonRow('Цільове фінансування, у тому числі:', '3040', '583', 'cfTargetFin')}
-          ${buildComparisonRow('- бюджетне фінансування', '3041', '583', 'cfBudgetFin')}
-          ${buildComparisonRow('Витрачання від операційної діяльності', '3100', '583', 'cfOutOperating', {bold:true})}
-          ${buildComparisonRow('- розрахунки за продукцію', '3110', '583', 'cfOutGoods')}
-          ${buildComparisonRow('- розрахунки з оплати праці', '3120', '583', 'cfOutLabor')}
-          ${buildComparisonRow('- відрахування на соц. заходи', '3130', '583', 'cfOutSocial')}
-          ${buildComparisonRow('- зобов\'язання з податків', '3150', '583', 'cfOutTaxes')}
-          ${buildComparisonRow('Чистий рух коштів від операційної діяльності', '3195', '583', 'cfNetOperating', {bold:true})}
-          ${buildComparisonRow('Чистий рух грошових коштів за звітний період', '3400', '583', 'cfNetTotal', {bold:true})}
-          ${buildComparisonRow('Залишок коштів на початок періоду', '3405', '583', 'cfStart')}
-          ${buildComparisonRow('Залишок коштів на кінець періоду', '3415', '583', 'cfEnd', {bold:true})}
-        </tbody>
-      </table>`;
-    } else if (currentTab === '584') {
-      container.innerHTML = `<table class="fin-table">
-        ${buildComparisonHead('Показник форми 584', true)}
-        <tbody>
-          ${buildComparisonRow('Капітальні інвестиції, усього', '4000', '584', 'capInvestTotal', {bold:true})}
-          ${buildComparisonRow('капітальне будівництво', '4010', '584', 'construction')}
-          ${buildComparisonRow('придбання основних засобів', '4020', '584', 'fixedAssetsBuy')}
-          ${buildComparisonRow('модернізація основних засобів', '4050', '584', 'modernization')}
-          ${buildComparisonRow('капітальний ремонт', '4060', '584', 'capRepair')}
-        </tbody>
-      </table>`;
-    } else if (currentTab === '588') {
-      container.innerHTML = `<table class="fin-table">
-        ${buildComparisonHead('Показник форми 588', true)}
-        <tbody>
-          ${buildComparisonRow('Усього джерел капінвестицій', '10', '588', 'sourcesTotal', {bold:true})}
-          ${buildComparisonRow('залучення кредитних коштів', '20', '588', 'creditFunds')}
-          ${buildComparisonRow('бюджетне фінансування', '30', '588', 'budgetFinancing')}
-          ${buildComparisonRow('власні кошти', '40', '588', 'ownFunds')}
-          ${buildComparisonRow('інші джерела', '50', '588', 'otherSources')}
-        </tbody>
-      </table>`;
-    } else if (currentTab === '589') {
-      container.innerHTML = `<table class="fin-table">
-        ${buildComparisonHead('Показник розшифровок (ф. 589)', true)}
-        <tbody>
-          ${buildComparisonRow('Інші операційні доходи', '1073', '589', 'otherOpIncome')}
-          ${buildComparisonRow('- бюджетне фінансування КЕКВ 2610', '380', '589', 'budgetFin2610', {bold:true})}
-          ${buildComparisonRow('Інші операційні витрати', '1086', '589', 'otherOpExpenses')}
-          ${buildComparisonRow('- бюджетні видатки КЕКВ 2610', '900', '589', 'budgetCosts2610', {bold:true})}
-        </tbody>
-      </table>`;
-    } else if (currentTab === '5895') {
-      container.innerHTML = `<table class="fin-table">
-        ${buildComparisonHead('Показник персоналу (ф. 5895)', true)}
-        <tbody>
-          ${buildComparisonRow('Середня кількість штатних працівників', '10', '5895', 'staffCount', {bold:true})}
-          ${buildComparisonRow('- керівник', '11', '5895', 'managerCount')}
-          ${buildComparisonRow('- адміністративно-управлінський персонал', '12', '5895', 'aupCount')}
-          ${buildComparisonRow('- робітники', '13', '5895', 'workersCount')}
-          ${buildComparisonRow('Витрати на оплату праці', '30', '5895', 'laborCosts', {bold:true})}
-        </tbody>
-      </table>`;
-    } else if (currentTab === 'raw') {
-      renderRawTab(container);
-    } else if (currentTab === 'check') {
-      renderCheckTab(container);
-    }
+    renderApp3FormTab(container, currentTab);
   }
-
-  attachCellClickHandlers();
-}
-
-function renderRawTab(container) {
-  container.innerHTML = `
-  <table class="fin-table">
-    <thead>
-      <tr>
-        <th style="width:200px">Форма-джерело</th>
-        <th style="width:80px;text-align:center;">Код рядка</th>
-        <th>Найменування первинної статті</th>
-        <th style="width:140px;text-align:right;">Значення (тис. грн)</th>
-        <th style="width:160px">Цільова форма</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td>Форма 1 (Баланс)</td><td style="text-align:center;">1095</td><td>Необоротні активи всього</td><td class="num" style="text-align:right;">61 890</td><td>ф.580 ряд. 6000</td></tr>
-      <tr><td>Форма 1 (Баланс)</td><td style="text-align:center;">1195</td><td>Оборотні активи всього</td><td class="num" style="text-align:right;">3 374</td><td>ф.580 ряд. 6010</td></tr>
-      <tr><td>Форма 1 (Баланс)</td><td style="text-align:center;">1300</td><td>Баланс (Активи)</td><td class="num" style="text-align:right;"><strong>65 264</strong></td><td>ф.580 ряд. 6020</td></tr>
-      <tr><td>Форма 1 (Баланс)</td><td style="text-align:center;">1495</td><td>Власний капітал</td><td class="num" style="text-align:right;color:var(--danger)">(63 223)</td><td>ф.580 ряд. 6080</td></tr>
-      <tr><td>Форма 1 (Баланс)</td><td style="text-align:center;">14201</td><td>Непокритий збиток</td><td class="num" style="text-align:right;color:var(--danger)">(82 503)</td><td>ф.582 ряд. 2070</td></tr>
-      <tr><td>Форма 2 (Фінрезультати)</td><td style="text-align:center;">2120</td><td>Інші операційні доходи</td><td class="num" style="text-align:right;">151 072</td><td>ф.581 ряд. 1070</td></tr>
-      <tr><td>Форма 2 (Фінрезультати)</td><td style="text-align:center;">2180</td><td>Інші операційні витрати</td><td class="num" style="text-align:right;color:var(--danger)">(167 108)</td><td>ф.581 ряд. 1080</td></tr>
-      <tr><td>Форма 2 (Фінрезультати)</td><td style="text-align:center;">2195</td><td>Фінрезультат від операційної діяльності</td><td class="num" style="text-align:right;color:var(--danger)">(16 036)</td><td>ф.581 ряд. 1100</td></tr>
-      <tr><td>Форма 2 (Фінрезультати)</td><td style="text-align:center;">2355</td><td>Чистий збиток</td><td class="num" style="text-align:right;color:var(--danger)">(14 187)</td><td>ф.581 / ф.582</td></tr>
-      <tr><td>Код форми 1956</td><td style="text-align:center;">70</td><td>Бюджетне фінансування КЕКВ 2610</td><td class="num" style="text-align:right;">148 442</td><td>ф.589 ряд. 380</td></tr>
-      <tr><td>Код форми 1704</td><td style="text-align:center;">50</td><td>Податок на доходи фізичних осіб (ПДФО)</td><td class="num" style="text-align:right;">2 235</td><td>ф.582 ряд. 2117</td></tr>
-      <tr><td>Код форми 8210</td><td style="text-align:center;">5+50</td><td>Єдиний соціальний внесок (ЄСВ)</td><td class="num" style="text-align:right;">2 540</td><td>ф.582 ряд. 2134</td></tr>
-      <tr><td>Форма 3 (Рух коштів)</td><td style="text-align:center;">3010</td><td>Цільове фінансування</td><td class="num" style="text-align:right;">152 421</td><td>ф.583 ряд. 3040</td></tr>
-    </tbody>
-  </table>`;
-}
-
-function renderCheckTab(container) {
-  container.innerHTML = `
-  <table class="fin-table">
-    <thead>
-      <tr>
-        <th>Контрольне співвідношення</th>
-        <th style="width:160px;text-align:right;">Базовий показник (A)</th>
-        <th style="width:160px;text-align:right;">Порівнюваний показник (B)</th>
-        <th style="width:140px;text-align:right;">Різниця (A − B)</th>
-        <th style="width:160px;text-align:center;">Статус контролю</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td>Рівність Балансу (Активи = Пасиви)</td><td class="num" style="text-align:right;">65 264</td><td class="num" style="text-align:right;">65 264</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-      <tr><td>Чистий фінрезультат (ф.581 ряд.1200 = ф.582 ряд.1200)</td><td class="num" style="text-align:right;color:var(--danger);">(14 187)</td><td class="num" style="text-align:right;color:var(--danger);">(14 187)</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-      <tr><td>Непокритий збиток (ф.582 ряд.2070 = ф.1 Баланс ряд.14201)</td><td class="num" style="text-align:right;color:var(--danger);">(82 503)</td><td class="num" style="text-align:right;color:var(--danger);">(82 503)</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-      <tr><td>Зв'язок розшифровок доходів (ф.589 ряд.1073 = ф.581 ряд.1070)</td><td class="num" style="text-align:right;">151 072</td><td class="num" style="text-align:right;">151 072</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-      <tr><td>Зв'язок розшифровок витрат (ф.589 ряд.1086 = ф.581 ряд.1080)</td><td class="num" style="text-align:right;">167 108</td><td class="num" style="text-align:right;">167 108</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-      <tr><td>Рух коштів (Залишок поч. + Чистий рух = Залишок кін.)</td><td class="num" style="text-align:right;">878</td><td class="num" style="text-align:right;">878</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-    </tbody>
-  </table>`;
 }
 
 // =====================================================
@@ -1133,9 +584,7 @@ async function fetchApp3Template() {
     if (json.success && json.app3Suite) {
       app3Data = json.app3Suite;
       updateApp3FromLiveData();
-      if (activeDocSet === 'app3') {
-        renderActiveTab();
-      }
+      renderActiveTab();
     }
   } catch (err) {
     console.warn('App3 data fetch deferred:', err.message);
@@ -1432,7 +881,7 @@ async function loadQuarterPdf(qNum, syncTables = true) {
     renderActiveTab();
     const statusEl = document.getElementById('footerStatusText');
     if (statusEl) {
-      statusEl.textContent = `Відображається: ${activeDocSet === 'app2' ? 'Офіційний Додаток 2' : 'Неофіційний Додаток 3'} (${getQuarterLabel(activeQuarter)}). Клік для редагування.`;
+      statusEl.textContent = `Відображається: Додаток 3 (${getQuarterLabel(activeQuarter)}). Клік для редагування.`;
     }
   }
 
@@ -1483,56 +932,6 @@ async function loadQuarterPdf(qNum, syncTables = true) {
 //  EVENTS & INITIALIZATION
 // =====================================================
 
-// Document Set Switcher (Додаток 2 vs Додаток 3)
-document.querySelectorAll('.docset-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.docset-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    activeDocSet = btn.getAttribute('data-docset');
-
-    const bar2 = document.getElementById('tabsBarApp2');
-    const bar3 = document.getElementById('tabsBarApp3');
-
-    if (activeDocSet === 'app2') {
-      if (bar2) bar2.style.display = 'flex';
-      if (bar3) bar3.style.display = 'none';
-      if (currentTab.startsWith('6') || currentTab === 'check3') {
-        currentTab = '580';
-        document.querySelectorAll('#tabsBarApp2 .tab-btn').forEach(b => {
-          b.classList.toggle('active', b.getAttribute('data-tab') === currentTab);
-        });
-      }
-    } else {
-      if (bar2) bar2.style.display = 'none';
-      if (bar3) bar3.style.display = 'flex';
-      if (currentTab.startsWith('5') || currentTab === 'raw' || currentTab === 'check') {
-        currentTab = '680';
-        document.querySelectorAll('#tabsBarApp3 .tab-btn').forEach(b => {
-          b.classList.toggle('active', b.getAttribute('data-tab') === currentTab);
-        });
-      }
-      if (!app3Data) {
-        fetchApp3Template();
-      }
-    }
-    renderActiveTab();
-  });
-});
-
-// Data pane view buttons (statutory / quarters)
-document.querySelectorAll('.qtr-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.qtr-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    activeMode = btn.getAttribute('data-qtr');
-    renderActiveTab();
-    document.getElementById('footerStatusText').textContent =
-      activeMode === 'statutory'
-        ? `Відображається: ${activeDocSet === 'app2' ? 'Офіційний Додаток 2' : 'Неофіційний Додаток 3'} (${getQuarterLabel(activeQuarter)}). Клік для редагування.`
-        : `Відображається: Порівняння кварталів (${activeMode}). Клік по цифрі для редагування.`;
-  });
-});
-
 // Top Header Quarter Buttons
 document.querySelectorAll('.qtr-header-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1545,10 +944,10 @@ document.querySelectorAll('.qtr-header-btn').forEach(btn => {
       loadQuarterPdf(qNum, false);
     }
     renderActiveTab();
-    document.getElementById('footerStatusText').textContent =
-      activeMode === 'statutory'
-        ? `Відображається: ${activeDocSet === 'app2' ? 'Офіційний Додаток 2' : 'Неофіційний Додаток 3'} (${getQuarterLabel(activeQuarter)}). Клік для редагування.`
-        : `Відображається: Порівняння кварталів (${activeMode}). Клік по цифрі для редагування.`;
+    const statusEl = document.getElementById('footerStatusText');
+    if (statusEl) {
+      statusEl.textContent = `Відображається: Додаток 3 (${getQuarterLabel(activeQuarter)}). Клік для редагування.`;
+    }
   });
 });
 
@@ -1578,12 +977,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     currentTab = btn.getAttribute('data-tab');
     renderActiveTab();
   });
-});
-
-// Export Excel button (Додаток 2)
-document.getElementById('exportExcelBtn').addEventListener('click', () => {
-  const qNum = activeQuarter === 'q1' ? 1 : activeQuarter === 'q2' ? 2 : activeQuarter === 'q3' ? 3 : 4;
-  window.location.href = `/api/export-excel/${currentYear}/${qNum}`;
 });
 
 // Export Excel button (Неофіційний Додаток 3)

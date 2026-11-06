@@ -114,13 +114,6 @@ function fmt(n) {
   return num.toLocaleString('uk-UA');
 }
 
-function getVal(period, formKey, field) {
-  const key = period + '|' + formKey + '|' + field;
-  if (userEdits[key] !== undefined) return userEdits[key];
-  return (liveData[period] && liveData[period][formKey] && liveData[period][formKey][field] !== undefined)
-    ? liveData[period][formKey][field] : 0;
-}
-
 function getQuarterLabel(q) {
   const map = { q1: 'I квартал', q2: 'II квартал', q3: 'III квартал', q4: 'IV квартал', year: 'Рік' };
   return map[q] || q;
@@ -506,10 +499,83 @@ function renderApp3FormTab(container, formKey) {
 }
 
 function renderCheck3Tab(container) {
+  // Допоміжна функція — бере значення з app3Data
+  function getRowVal(formKey, code, col) {
+    if (!app3Data || !app3Data[formKey]) return 0;
+    const row = app3Data[formKey].find(r => String(r.code) === String(code));
+    if (!row) return 0;
+    const key = `app3|${formKey}|${code}|${col}`;
+    if (userEdits[key] !== undefined) return userEdits[key];
+    const v = row[col];
+    return typeof v === 'number' ? v : (parseFloat(v) || 0);
+  }
+
+  const col = activeQuarter === 'year' ? 'currentYear' : activeQuarter;
+
+  // --- Визначаємо перевірки ---
+  const checks = [
+    {
+      label: 'Форма 680: EBITDA (ряд. 1300) = Чистий прибуток (ряд. 1200) + Амортизація (681 ряд. 1430)',
+      a: getRowVal('680', '1300', col),
+      b: getRowVal('680', '1200', col) + getRowVal('681', '1430', col)
+    },
+    {
+      label: 'Форма 680: Чистий фінрезультат (ряд. 1200) = ф. 681 (ряд. 1200)',
+      a: getRowVal('680', '1200', col),
+      b: getRowVal('681', '1200', col)
+    },
+    {
+      label: 'Форма 680: Баланс (Активи ряд. 6020 = Власний капітал 6080 + Довгостр. зоб. 6030 + Поточні зоб. 6040)',
+      a: getRowVal('680', '6020', col),
+      b: getRowVal('680', '6080', col) + getRowVal('680', '6030', col) + getRowVal('680', '6040', col)
+    },
+    {
+      label: 'Форма 683: Рух коштів (Залишок поч. 3405 + Чистий рух 3400 = Залишок кін. 3415)',
+      a: getRowVal('683', '3405', col) + getRowVal('683', '3400', col),
+      b: getRowVal('683', '3415', col)
+    },
+    {
+      label: 'Форма 6895: Персонал (Керівник 8003 + АУП 8004 + Робітники 8005 = Усього 8000)',
+      a: getRowVal('6895', '8000', col),
+      b: getRowVal('6895', '8003', col) + getRowVal('6895', '8004', col) + getRowVal('6895', '8005', col)
+    },
+    {
+      label: 'Форма 682: Нерозподілений прибуток (поч. 2000 + ЧП 1200 = кін. 2070)',
+      a: getRowVal('682', '2000', col) + getRowVal('682', '1200', col),
+      b: getRowVal('682', '2070', col)
+    }
+  ];
+
+  function checkRow(c) {
+    const diff = c.a - c.b;
+    const ok = Math.abs(diff) <= 1;
+    const statusColor = ok ? 'var(--success)' : 'var(--danger)';
+    const statusText = ok ? '✓ ЗБІГАЄТЬСЯ' : '⚠️ Розбіжність';
+    const diffColor = ok ? '' : 'color:var(--danger);font-weight:bold;';
+    return `<tr>
+      <td>${c.label}</td>
+      <td class="num" style="text-align:right;">${fmt(c.a)}</td>
+      <td class="num" style="text-align:right;">${fmt(c.b)}</td>
+      <td class="num" style="text-align:right;${diffColor}">${fmt(diff)}</td>
+      <td style="text-align:center;color:${statusColor};font-weight:bold;">${statusText}</td>
+    </tr>`;
+  }
+
+  const totalChecks = checks.length;
+  const passedChecks = checks.filter(c => Math.abs(c.a - c.b) <= 1).length;
+  const allOk = passedChecks === totalChecks;
+
   container.innerHTML = `
   <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:12px;font-size:0.82rem;">
-    <div style="font-weight:700;font-size:1rem;margin-bottom:4px;color:var(--text-main);">Перевірка контрольних співвідношень (Неофіційний Додаток 3)</div>
-    <div style="color:var(--text-muted);">Автоматична верифікація між формами 680, 681, 682, 683, 684, 688, 689, 6895</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-weight:700;font-size:1rem;margin-bottom:4px;color:var(--text-main);">Перевірка контрольних співвідношень (Неофіційний Додаток 3)</div>
+        <div style="color:var(--text-muted);">Автоматична верифікація між формами 680, 681, 682, 683, 6895 — <strong style="color:var(--primary);">${getQuarterLabel(activeQuarter)}</strong></div>
+      </div>
+      <div class="status-pill ${allOk ? 'success' : 'danger'}">
+        ${allOk ? '✓' : '⚠️'} ${passedChecks}/${totalChecks} перевірок пройдено
+      </div>
+    </div>
   </div>
   <table class="fin-table">
     <thead>
@@ -522,11 +588,7 @@ function renderCheck3Tab(container) {
       </tr>
     </thead>
     <tbody>
-      <tr><td>Форма 680: EBITDA (ряд. 1300) = Чистий прибуток + Амортизація</td><td class="num" style="text-align:right;color:var(--danger)">(5 960)</td><td class="num" style="text-align:right;color:var(--danger)">(5 960)</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-      <tr><td>Форма 680: Чистий фінрезультат (ряд. 1200) = ф. 681 (ряд. 1200)</td><td class="num" style="text-align:right;color:var(--danger)">(4 669)</td><td class="num" style="text-align:right;color:var(--danger)">(4 669)</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-      <tr><td>Форма 680: Баланс (Активи = Пасиви)</td><td class="num" style="text-align:right;">68 360</td><td class="num" style="text-align:right;">68 360</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-      <tr><td>Форма 683: Рух коштів (Залишок поч. + Чистий рух = Залишок кін.)</td><td class="num" style="text-align:right;">873</td><td class="num" style="text-align:right;">873</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
-      <tr><td>Форма 6895: Персонал (Керівник + АУП + Робітники = Усього)</td><td class="num" style="text-align:right;">66</td><td class="num" style="text-align:right;">66</td><td class="num" style="text-align:right;">0</td><td style="text-align:center;color:var(--success);font-weight:bold;">✓ ЗБІГАЄТЬСЯ</td></tr>
+      ${checks.map(c => checkRow(c)).join('')}
     </tbody>
   </table>`;
 }
@@ -591,58 +653,6 @@ async function fetchApp3Template() {
   }
 }
 
-// =====================================================
-//  EDITABLE CELLS
-// =====================================================
-function attachCellClickHandlers() {
-  document.querySelectorAll('.editable-cell').forEach(cell => {
-    cell.onclick = function() {
-      if (cell.querySelector('input')) return;
-      const period = cell.getAttribute('data-period');
-      const formKey = cell.getAttribute('data-form');
-      const field = cell.getAttribute('data-field');
-      const key = period + '|' + formKey + '|' + field;
-      const currentVal = userEdits[key] !== undefined
-        ? userEdits[key]
-        : (liveData[period] && liveData[period][formKey] ? (liveData[period][formKey][field] || 0) : 0);
-
-      const input = document.createElement('input');
-      input.type = 'number';
-      input.value = currentVal;
-      input.style.width = '100%';
-      input.style.background = '#0f172a';
-      input.style.color = '#fff';
-      input.style.border = '1px solid var(--primary)';
-      input.style.padding = '2px 4px';
-      input.style.textAlign = 'right';
-      input.style.borderRadius = '3px';
-
-      cell.innerHTML = '';
-      cell.appendChild(input);
-      input.focus();
-      input.select();
-
-      function commit() {
-        const parsed = parseFloat(input.value);
-        if (!isNaN(parsed)) {
-          userEdits[key] = parsed;
-          if (liveData[period] && liveData[period][formKey]) {
-            liveData[period][formKey][field] = parsed;
-          }
-          flashSaveNotice();
-        }
-        renderActiveTab();
-      }
-
-      input.onblur = commit;
-      input.onkeydown = function(e) {
-        if (e.key === 'Enter') commit();
-        if (e.key === 'Escape') renderActiveTab();
-      };
-    };
-  });
-}
-
 function flashSaveNotice() {
   const el = document.getElementById('saveNotice');
   if (!el) return;
@@ -685,10 +695,14 @@ async function renderPdfPage(pageNum) {
   try {
     const page = await pdfDoc.getPage(pdfCurrentPage);
     const canvas = document.getElementById('pdfCanvas');
-    const ctx = canvas.getContext('2d');
     const vp = page.getViewport({ scale: pdfScale });
-    canvas.width = vp.width;
-    canvas.height = vp.height;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = vp.width * dpr;
+    canvas.height = vp.height * dpr;
+    canvas.style.width = vp.width + 'px';
+    canvas.style.height = vp.height + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     pdfRenderTask = page.render({ canvasContext: ctx, viewport: vp });
     await pdfRenderTask.promise;
     pdfRenderTask = null;

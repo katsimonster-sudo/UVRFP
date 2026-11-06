@@ -700,8 +700,19 @@ async function renderPdfPage(pageNum) {
 }
 
 function setZoom(newScale) {
+  const wrap = document.getElementById('pdfCanvasWrap');
+  const oldScale = pdfScale;
+  const oldScrollLeft = wrap ? wrap.scrollLeft : 0;
+  const oldScrollTop = wrap ? wrap.scrollTop : 0;
+
   pdfScale = Math.max(0.4, Math.min(4.0, Math.round(newScale * 100) / 100));
-  renderPdfPage(pdfCurrentPage);
+  renderPdfPage(pdfCurrentPage).then(() => {
+    if (wrap && oldScale > 0) {
+      const ratio = pdfScale / oldScale;
+      wrap.scrollLeft = oldScrollLeft * ratio;
+      wrap.scrollTop = oldScrollTop * ratio;
+    }
+  });
 }
 
 function setZoomAtPoint(newScale, clientX, clientY) {
@@ -813,11 +824,20 @@ document.getElementById('zoomFitBtn').addEventListener('click', async () => {
   window.addEventListener('mouseup', stopPan);
   wrap.addEventListener('mouseleave', stopPan);
 
-  // Wheel zoom with cursor centering
+  // Wheel handling:
+  // - Ctrl/Cmd + Wheel (or pinch on touchpad) -> Zoom at mouse position
+  // - Shift + Wheel -> Scroll horizontally
+  // - Normal Wheel -> Scroll vertically / touchpad natural scroll
   wrap.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const delta = e.deltaY < 0 ? 0.15 : -0.15;
-    setZoomAtPoint(pdfScale + delta, e.clientX, e.clientY);
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.15 : -0.15;
+      setZoomAtPoint(pdfScale + delta, e.clientX, e.clientY);
+    } else if (e.shiftKey) {
+      e.preventDefault();
+      wrap.scrollLeft += e.deltaY;
+    }
+    // Allow natural vertical and horizontal scrolling when unkeyed
   }, { passive: false });
 })();
 

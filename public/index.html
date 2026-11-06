@@ -48,6 +48,10 @@
       display: none;
       overflow: auto;
       flex: 1;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      min-width: 0;
       background: #2e3440;
       cursor: grab;
       user-select: none;
@@ -57,15 +61,29 @@
     #pdfCanvasWrap.is-panning {
       cursor: grabbing !important;
     }
+    #pdfCanvasWrap::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    #pdfCanvasWrap::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.25);
+    }
+    #pdfCanvasWrap::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 5px;
+    }
+    #pdfCanvasWrap::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
     #pdfCanvasContainer {
       display: flex;
-      justify-content: safe center;
-      align-items: flex-start;
+      flex-direction: column;
+      align-items: center;
+      width: fit-content;
       min-width: 100%;
       min-height: 100%;
       padding: 24px;
       box-sizing: border-box;
-      width: max-content;
     }
     #pdfCanvas {
       display: block;
@@ -243,7 +261,7 @@
         </div>
       </div>
 
-      <div class="pdf-viewer-frame" id="pdfViewerFrame" style="display:flex;flex-direction:column;overflow:hidden;">
+      <div class="pdf-viewer-frame" id="pdfViewerFrame" style="display:flex;flex-direction:column;overflow:hidden;min-height:0;">
         <!-- Placeholder -->
         <div class="pdf-page-simulated" id="pdfPageContent" style="overflow:auto;flex:1;">
           <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">

@@ -111,6 +111,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 .pane-toolbar {
   height: 44px;
@@ -124,11 +125,12 @@ body {
 }
 .pdf-viewer-frame {
   flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem;
+  overflow: hidden;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
 }
 .pdf-page-simulated {
   background: white;
